@@ -7720,7 +7720,7 @@ TITLE_ENTRY:
                             0, 255, 10
                         );
 
-                        for (k = 0; k < 5; ++k) {
+                        for (k = 0; k < 3; ++k) {
                             if (tr.switch_id[k] > 0 && tr.switch_id[k] < MAX_SWITCHES)
                                 g_switches[tr.switch_id[k]] = (uint8_t)tr.switch_value[k];
                         }
