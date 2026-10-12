@@ -7,11 +7,14 @@
 #include <pspaudio.h>
 
 #include <errno.h>
+#include <limits.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <malloc.h>
+#include "runtime/compressed_assets.h"
 
 PSP_MODULE_INFO("NARAKU PSP", PSP_MODULE_USER, 1, 78);
 #include "runtime/player_animation.h"
@@ -164,7 +167,10 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 #define SCENE_OPTIONS 5
 #define SCENE_TITLE 6
 
-#define ROOT "ms0:/PSP/GAME/NARAKU/"
+#ifndef NARAKU_GAME_DIR
+#define NARAKU_GAME_DIR "NARAKU"
+#endif
+#define ROOT "ms0:/PSP/GAME/" NARAKU_GAME_DIR "/"
 #define ASSET_ROOT ROOT "assets/"
 #define CONFIG_PATH ROOT "config.bin"
 #define PROGRESS_PATH ROOT "progress.bin"
@@ -240,6 +246,11 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 
 #define AUDIO_FRAMES 4096
 #define AUDIO_BYTES (AUDIO_FRAMES * 2 * (int)sizeof(int16_t))
+/* RPG Maker's blood-floor step effect has a long reverb tail (about 1.5 s).
+ * Replaying the whole clip on every tile stacks many voices and repeated
+ * DEFLATE work on low-end phones. Keep the footfall and a short faded tail. */
+#define STEP_SE_MAX_BYTES (44100 * 2 * 2 * 35 / 100) /* 0.35 s, stereo S16 */
+#define STEP_SE_FADE_BYTES (44100 * 2 * 2 * 9 / 100) /* last 0.09 s */
 
 static unsigned int __attribute__((aligned(16))) gu_list[65536];
 static uint8_t *g_common_vm = NULL;
@@ -303,6 +314,56 @@ typedef struct {
 static PictureSlot g_pictures[MAX_ACTIVE_PICTURES];
 static volatile int g_audio_stop = 0;
 static char g_scene_trace_path[512] = ASSET_ROOT "scene_trace.log";
+#ifdef NARAKU_BOOT_DIAGNOSTICS
+static char g_boot_diag_path[512] = ROOT "BOOTLOG.TXT";
+static int g_boot_diag_row;
+
+static void boot_diag_init(const char *argv0)
+{
+    const char *slash = argv0 ? strrchr(argv0, '/') : NULL;
+    if (slash && (size_t)(slash - argv0) < sizeof(g_boot_diag_path) - 16) {
+        size_t n = (size_t)(slash - argv0) + 1;
+        memcpy(g_boot_diag_path, argv0, n);
+        strcpy(g_boot_diag_path + n, "BOOTLOG.TXT");
+    }
+    pspDebugScreenInit();
+    pspDebugScreenClear();
+    pspDebugScreenSetXY(0, 0);
+    pspDebugScreenPrintf("NARAKU PSP 1.7.8 - PSP-1000 BOOT TEST\n");
+    pspDebugScreenPrintf("Keep this screen or send a photo.\n\n");
+    g_boot_diag_row = 3;
+}
+
+static void boot_diag(const char *stage)
+{
+    FILE *f = fopen(g_boot_diag_path, "a");
+    int logged = f != NULL;
+    int free_bytes = sceKernelTotalFreeMemSize();
+    if (f) {
+        fprintf(f, "%s free=%d\n", stage, free_bytes);
+        fclose(f);
+    }
+    if (g_boot_diag_row < 33) {
+        pspDebugScreenSetXY(0, g_boot_diag_row++);
+        pspDebugScreenPrintf("%-25s %5d KB  log:%s\n", stage,
+                             free_bytes / 1024, logged ? "OK" : "FAIL");
+    }
+}
+
+static void boot_diag_error(const char *message)
+{
+    FILE *f = fopen(g_boot_diag_path, "a");
+    if (f) {
+        fprintf(f, "FATAL: %s\n", message ? message : "unknown");
+        fclose(f);
+    }
+}
+#else
+static void boot_diag_init(const char *argv0) { (void)argv0; }
+static void boot_diag(const char *stage) { (void)stage; }
+static void boot_diag_error(const char *message) { (void)message; }
+#endif
+
 static void scene_trace(int map, int event, int offset, int op)
 {
     FILE *f = fopen(g_scene_trace_path, "a");
@@ -463,6 +524,8 @@ typedef struct {
 typedef struct {
     char path[192];
     int generation;
+    size_t max_bytes;
+    size_t fade_bytes;
 } SeJob;
 
 typedef struct {
@@ -709,6 +772,7 @@ static void setup_callbacks(void)
 
 static void fatal_error(const char *message)
 {
+    boot_diag_error(message);
     pspDebugScreenInit();
     pspDebugScreenClear();
     pspDebugScreenPrintf("\nNARAKU PSP 1.7.8\n\nERROR:\n%s\n", message);
@@ -718,6 +782,40 @@ static void fatal_error(const char *message)
 
 static void *load_exact_file(const char *path, size_t expected_size)
 {
+#ifdef NARAKU_COMPRESSED_ASSETS
+    char compressed_path[256];
+    int path_len = snprintf(compressed_path, sizeof(compressed_path), "%s.z", path);
+    if (path_len > 0 && (size_t)path_len < sizeof(compressed_path)) {
+        FILE *zf = fopen(compressed_path, "rb");
+        if (zf) {
+            long compressed_len;
+            uint8_t *compressed = NULL;
+            void *data = NULL;
+            uLongf output_len = (uLongf)expected_size;
+            int ok = 0;
+            if (fseek(zf, 0, SEEK_END) == 0 &&
+                (compressed_len = ftell(zf)) > 0 &&
+                fseek(zf, 0, SEEK_SET) == 0) {
+                compressed = (uint8_t *)malloc((size_t)compressed_len);
+                data = memalign(16, expected_size);
+                if (compressed && data &&
+                    fread(compressed, 1, (size_t)compressed_len, zf) == (size_t)compressed_len &&
+                    uncompress((Bytef *)data, &output_len, (const Bytef *)compressed,
+                               (uLong)compressed_len) == Z_OK &&
+                    output_len == (uLongf)expected_size)
+                    ok = 1;
+            }
+            fclose(zf);
+            free(compressed);
+            if (ok) {
+                sceKernelDcacheWritebackInvalidateAll();
+                return data;
+            }
+            free(data);
+            return NULL;
+        }
+    }
+#endif
     FILE *f = fopen(path, "rb");
     if (!f) return NULL;
 
@@ -1883,7 +1981,8 @@ static void set_bgm_track(const char *path)
 
 static int bgm_thread(SceSize args, void *argp)
 {
-    FILE *f = NULL;
+    PcmReader reader;
+    int reader_open = 0;
     int channel;
     int16_t *buffer;
     int seen_generation = -1;
@@ -1891,6 +1990,7 @@ static int bgm_thread(SceSize args, void *argp)
 
     (void)args;
     (void)argp;
+    memset(&reader, 0, sizeof(reader));
 
     channel = sceAudioChReserve(
         PSP_AUDIO_NEXT_CHANNEL, AUDIO_FRAMES, PSP_AUDIO_FORMAT_STEREO
@@ -1906,26 +2006,30 @@ static int bgm_thread(SceSize args, void *argp)
     while (!g_audio_stop) {
         if (seen_generation != g_bgm_generation) {
             char path[192];
-            if (f) { fclose(f); f = NULL; }
+            if (reader_open) { pcm_reader_close(&reader); reader_open = 0; }
             strncpy(path, g_bgm_path, sizeof(path) - 1);
             path[sizeof(path) - 1] = '\0';
             seen_generation = g_bgm_generation;
             fade_stopped = 0;
-            if (path[0]) f = fopen(path, "rb");
+            if (path[0]) reader_open = pcm_reader_open(&reader, path);
         }
 
-        if (!f || fade_stopped) {
+        if (!reader_open || fade_stopped) {
             sceKernelDelayThread(10000);
             continue;
         }
 
         {
-            size_t got = fread(buffer, 1, AUDIO_BYTES, f);
+            size_t got = pcm_reader_read(&reader, buffer, AUDIO_BYTES);
             if (got < AUDIO_BYTES) {
-                if (feof(f)) {
-                    size_t more;
-                    fseek(f, 0, SEEK_SET);
-                    more = fread((uint8_t *)buffer + got, 1, AUDIO_BYTES - got, f);
+                if (reader.file && (feof(reader.file)
+#ifdef NARAKU_COMPRESSED_ASSETS
+                    || reader.ended
+#endif
+                    )) {
+                    size_t more = 0;
+                    if (pcm_reader_rewind(&reader))
+                        more = pcm_reader_read(&reader, (uint8_t *)buffer + got, AUDIO_BYTES - got);
                     got += more;
                 }
                 if (got < AUDIO_BYTES)
@@ -1946,7 +2050,7 @@ static int bgm_thread(SceSize args, void *argp)
         }
     }
 
-    if (f) fclose(f);
+    if (reader_open) pcm_reader_close(&reader);
     free(buffer);
     sceAudioChRelease(channel);
     return 0;
@@ -1964,53 +2068,77 @@ static int se_thread(SceSize args, void *argp)
 {
     int generation;
     SeJob *job;
-    FILE *f;
+    PcmReader reader;
     int channel;
     int16_t *buffer;
+    size_t bytes_played = 0;
 
     if (args < sizeof(SeJob) || !argp) sceKernelExitDeleteThread(0);
     job = (SeJob *)argp;
     generation = job->generation;
-    f = fopen(job->path, "rb");
-    if (!f) sceKernelExitDeleteThread(0);
+    memset(&reader, 0, sizeof(reader));
+    if (!pcm_reader_open(&reader, job->path)) sceKernelExitDeleteThread(0);
 
     channel = sceAudioChReserve(
         PSP_AUDIO_NEXT_CHANNEL, AUDIO_FRAMES, PSP_AUDIO_FORMAT_STEREO
     );
     if (channel < 0) {
-        fclose(f);
+        pcm_reader_close(&reader);
         sceKernelExitDeleteThread(0);
     }
 
     buffer = (int16_t *)memalign(64, AUDIO_BYTES);
     if (!buffer) {
         sceAudioChRelease(channel);
-        fclose(f);
+        pcm_reader_close(&reader);
         sceKernelExitDeleteThread(0);
     }
 
     while (!g_audio_stop && generation == g_se_generation) {
-        size_t got = fread(buffer, 1, AUDIO_BYTES, f);
+        size_t request_bytes = AUDIO_BYTES;
+        size_t got;
+        if (job->max_bytes) {
+            if (bytes_played >= job->max_bytes) break;
+            if (request_bytes > job->max_bytes - bytes_played)
+                request_bytes = job->max_bytes - bytes_played;
+        }
+        got = pcm_reader_read(&reader, buffer, request_bytes);
         if (got == 0) break;
         if (got < AUDIO_BYTES)
             memset((uint8_t *)buffer + got, 0, AUDIO_BYTES - got);
+        if (job->fade_bytes && job->max_bytes) {
+            size_t fade_start = job->max_bytes > job->fade_bytes
+                ? job->max_bytes - job->fade_bytes : 0;
+            size_t samples = got / sizeof(int16_t);
+            size_t i;
+            for (i = 0; i < samples; ++i) {
+                size_t byte_pos = bytes_played + i * sizeof(int16_t);
+                if (byte_pos >= fade_start) {
+                    size_t remain = byte_pos < job->max_bytes
+                        ? job->max_bytes - byte_pos : 0;
+                    buffer[i] = (int16_t)((int32_t)buffer[i] *
+                        (int32_t)remain / (int32_t)job->fade_bytes);
+                }
+            }
+        }
         {
             int vol = PSP_AUDIO_VOLUME_MAX * g_se_volume / 100;
             if (vol < 0) vol = 0;
             if (vol > PSP_AUDIO_VOLUME_MAX) vol = PSP_AUDIO_VOLUME_MAX;
             sceAudioOutputBlocking(channel, vol, buffer);
         }
-        if (got < AUDIO_BYTES) break;
+        bytes_played += got;
+        if (got < request_bytes || got < AUDIO_BYTES) break;
     }
 
     free(buffer);
     sceAudioChRelease(channel);
-    fclose(f);
+    pcm_reader_close(&reader);
     sceKernelExitDeleteThread(0);
     return 0;
 }
 
-static void play_se_async(const char *path)
+static void play_se_async_limited(const char *path, size_t max_bytes, size_t fade_bytes)
 {
     SeJob job;
     int thid;
@@ -2018,11 +2146,18 @@ static void play_se_async(const char *path)
     memset(&job, 0, sizeof(job));
     job.generation = g_se_generation;
     strncpy(job.path, path, sizeof(job.path) - 1);
+    job.max_bytes = max_bytes;
+    job.fade_bytes = fade_bytes;
 
     thid = sceKernelCreateThread(
         "NARAKU SE", se_thread, 0x13, 0x2000, 0, NULL
     );
     if (thid >= 0) sceKernelStartThread(thid, sizeof(job), &job);
+}
+
+static void play_se_async(const char *path)
+{
+    play_se_async_limited(path, 0, 0);
 }
 
 static void play_vm_se_params(int se_id, int volume, int pitch, int pan)
@@ -2040,10 +2175,14 @@ static void play_vm_se_params(int se_id, int volume, int pitch, int pan)
      * (20%, pitch 50), making footsteps far too loud and low.  Pick the exact
      * pre-rendered variant from the command's original MZ volume/pitch. */
     if (se_id == 3) {
-        if (volume == 5 && pitch == 70) play_se_async(SE_SPLASH_STEP70_PATH);
-        else if (volume == 5 && pitch == 120) play_se_async(SE_SPLASH_STEP120_PATH);
-        else if (volume == 20 && pitch == 70) play_se_async(SE_SPLASH_20_70_PATH);
-        else play_se_async(SE_SPLASH_PATH); /* canonical 20%, pitch 50 */
+        if (volume == 5 && pitch == 70)
+            play_se_async_limited(SE_SPLASH_STEP70_PATH, STEP_SE_MAX_BYTES, STEP_SE_FADE_BYTES);
+        else if (volume == 5 && pitch == 120)
+            play_se_async_limited(SE_SPLASH_STEP120_PATH, STEP_SE_MAX_BYTES, STEP_SE_FADE_BYTES);
+        else if (volume == 20 && pitch == 70)
+            play_se_async_limited(SE_SPLASH_20_70_PATH, STEP_SE_MAX_BYTES, STEP_SE_FADE_BYTES);
+        else
+            play_se_async_limited(SE_SPLASH_PATH, STEP_SE_MAX_BYTES, STEP_SE_FADE_BYTES);
         return;
     }
 
@@ -2056,8 +2195,8 @@ static void play_vm_se_params(int se_id, int volume, int pitch, int pan)
         else if (volume == 50 && pitch == 80) play_se_async(SE_WATER_50_80_PATH);
         else play_se_async(SE_WATER_PATH);                    /* canonical 90%, pitch 100 */
     }
-    else if (se_id == 4) play_se_async(SE_SPLASH_STEP70_PATH);/* legacy alias */
-    else if (se_id == 5) play_se_async(SE_SPLASH_STEP120_PATH);/* legacy alias */
+    else if (se_id == 4) play_se_async_limited(SE_SPLASH_STEP70_PATH, STEP_SE_MAX_BYTES, STEP_SE_FADE_BYTES);/* legacy alias */
+    else if (se_id == 5) play_se_async_limited(SE_SPLASH_STEP120_PATH, STEP_SE_MAX_BYTES, STEP_SE_FADE_BYTES);/* legacy alias */
     else if (se_id == 6) play_se_async(SE_BONE_100_PATH);     /* 90%, pitch 100 */
     else if (se_id == 7) play_se_async(SE_MENU_OPEN_PATH);
     else if (se_id == 8) play_se_async(SE_DECISION1_PATH);
@@ -3585,23 +3724,6 @@ static void compute_camera(
 
 }
 
-static void draw_map_slot_local(uint16_t local_slot, float x, float y)
-{
-    int index;
-    int sx;
-    int sy;
-
-    if (local_slot == 0) return;
-    index = (int)local_slot - 1;
-    sx = (index % TILE_ATLAS_COLS) * TILE_SLOT + 1;
-    sy = (index / TILE_ATLAS_COLS) * TILE_SLOT + 1;
-
-    draw_bound_rect(
-        (float)sx, (float)sy, (float)TILE_SOURCE, (float)TILE_SOURCE,
-        x, y, (float)TILE_PX, (float)TILE_PX
-    );
-}
-
 static void draw_character_frame(
     int pattern, int direction_row, float foot_x, float foot_y)
 {
@@ -3636,8 +3758,30 @@ static void draw_map_pass(
     const MapState *m, int upper,
     float camera_x, float camera_y, float origin_x, float origin_y)
 {
+    enum { MAP_BATCH_TILES = 64 };
+    TextureVertex batch[MAP_BATCH_TILES * 2];
+    int batch_tiles = 0;
     int y;
     int bound_atlas = -1;
+    int bound_filter = -1;
+
+    /* Map rooms are made from hundreds of tile quads.  Sending each tile as
+     * its own GU draw call costs more CPU time than filling a small vertex
+     * batch. Keep traversal order and flush whenever atlas/filter state
+     * changes, so transparency and pixel-art sampling stay identical. */
+#define FLUSH_MAP_BATCH() do { \
+        if (batch_tiles > 0) { \
+            TextureVertex *vertices = (TextureVertex *)sceGuGetMemory( \
+                (size_t)batch_tiles * 2u * sizeof(TextureVertex)); \
+            if (vertices) { \
+                memcpy(vertices, batch, (size_t)batch_tiles * 2u * sizeof(TextureVertex)); \
+                sceGuDrawArray(GU_SPRITES, \
+                    GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D, \
+                    batch_tiles * 2, NULL, vertices); \
+            } \
+            batch_tiles = 0; \
+        } \
+    } while (0)
 
     /* Never let Fog A1 / monitor / fitted-picture GU_LINEAR state bleed into
      * map-atlas sampling.  The atlases have transparent gutters, so LINEAR for
@@ -3660,6 +3804,7 @@ static void draw_map_pass(
                 int is_upper;
                 int atlas_index;
                 uint16_t local_slot;
+                int filter;
 
                 if (word == 0) continue;
                 is_upper = (word & 0x8000) != 0;
@@ -3669,7 +3814,11 @@ static void draw_map_pass(
                 atlas_index = ((int)global_slot - 1) / 100;
                 local_slot = (uint16_t)(((global_slot - 1) % 100) + 1);
                 if (atlas_index < 0 || atlas_index >= m->tile_atlas_count) continue;
+                filter = (word & 0x4000) ? GU_LINEAR : GU_NEAREST;
 
+                if (bound_atlas != atlas_index || bound_filter != filter) {
+                    FLUSH_MAP_BATCH();
+                }
                 if (bound_atlas != atlas_index) {
                     bind_texture_8888(
                         m->tile_atlases[atlas_index],
@@ -3677,12 +3826,28 @@ static void draw_map_pass(
                     );
                     bound_atlas = atlas_index;
                 }
-                if(word & 0x4000)sceGuTexFilter(GU_LINEAR,GU_LINEAR);
-                draw_map_slot_local(local_slot, dx, dy);
-                if(word & 0x4000)sceGuTexFilter(GU_NEAREST,GU_NEAREST);
+                if (bound_filter != filter) {
+                    sceGuTexFilter(filter, filter);
+                    bound_filter = filter;
+                }
+
+                {
+                    int index = (int)local_slot - 1;
+                    int sx = (index % TILE_ATLAS_COLS) * TILE_SLOT + 1;
+                    int sy = (index / TILE_ATLAS_COLS) * TILE_SLOT + 1;
+                    TextureVertex *v = &batch[batch_tiles * 2];
+                    v[0].u = (float)sx; v[0].v = (float)sy;
+                    v[0].x = dx; v[0].y = dy; v[0].z = 0.0f;
+                    v[1].u = (float)(sx + TILE_SOURCE);
+                    v[1].v = (float)(sy + TILE_SOURCE);
+                    v[1].x = dx + TILE_PX; v[1].y = dy + TILE_PX; v[1].z = 0.0f;
+                }
+                if (++batch_tiles >= MAP_BATCH_TILES) FLUSH_MAP_BATCH();
             }
         }
     }
+    FLUSH_MAP_BATCH();
+#undef FLUSH_MAP_BATCH
 }
 
 /* Crowded source sheets use one detail page, freed on map transfer. */
@@ -4152,7 +4317,20 @@ static void draw_fog_a1_overlay(int effect_active)
         g_fog_scroll -= 512.0f;
 }
 
+/* Keep the laser trail reset independent of memset's return value.  Some
+ * PPSSPP JIT/IR paths on ARM devices have been observed to lose that return
+ * pointer when this reset is inlined, turning the following sentinel store
+ * into a write at 0x404.  The void wrapper forces the trail header to form
+ * addresses from the actual object instead. */
+static __attribute__((noinline)) void laser_trail_memset_discard_result(
+    void *dst, int value, size_t size)
+{
+    (void)memset(dst, value, size);
+}
+#define memset(dst, value, size) \
+    laser_trail_memset_discard_result((dst), (value), (size))
 #include "runtime/laser_chase_trail.h"
+#undef memset
 
 static void clear_event_routes(void)
 {
@@ -6176,6 +6354,13 @@ static int vm_execute_page(
             /* Button-room arrival: two frames earlier, only its first wait. */
             if (source_map_id == 36 && source_event_id == 17 &&
                 p - base == 6 && frames == 120) frames = 118;
+            /* Map013 Event069 grants the axe, then idles for 60 frames before
+             * its obtained-item message.  That full second was especially
+             * noticeable in this tile-heavy room because every wait frame
+             * redraws the world. Preserve a short pickup beat and the sound
+             * cue while avoiding the unnecessary one-second pause. */
+            if (source_map_id == 13 && source_event_id == 69 && frames == 60)
+                frames = 12;
             vm_wait_frames(frames, m, char_atlas, *tile_x, *tile_y, *direction_row);
         } else if (op == VM_OP_TRANSFER) {
             int dest_map, dest_x, dest_y, direction, fade;
@@ -7106,6 +7291,8 @@ int main(int argc, char *argv[])
     uint32_t prev_buttons = 0;
 
     (void)argc;
+    boot_diag_init(argv && argc > 0 ? argv[0] : NULL);
+    boot_diag("01 main entered");
     if (argc > 0 && argv && argv[0]) {
         const char *slash = strrchr(argv[0], '/');
         if (slash && (size_t)(slash - argv[0]) < sizeof(g_scene_trace_path) - 32) {
@@ -7119,18 +7306,22 @@ int main(int argc, char *argv[])
 
     memset(&map, 0, sizeof(map));
     reset_runtime_game_state();
+    boot_diag("02 state reset");
 
     setup_callbacks();
+    boot_diag("03 callbacks ready");
     sceCtrlSetSamplingCycle(0);
     sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
 
     boot_buttons = read_boot_hotkeys();
+    boot_diag("04 controls sampled");
 
     /* SELECT at boot remains only as an emergency language fallback.  The
      * normal language control now lives in NARAKU's Options scene.  The old
      * TRIANGLE "delete progress" shortcut is intentionally gone: the PC game
      * has no equivalent and 0.6.0 uses explicit save slots. */
     lang = load_saved_language();
+    boot_diag("05 config loaded");
     if (lang < 0) {
         /* Fresh installs start in English.  Language selection is an Option,
          * not a mandatory first-boot wizard in the PSP port. */
@@ -7142,31 +7333,49 @@ int main(int argc, char *argv[])
         lang = choose_language(lang);
     g_language = lang;
 
+    boot_diag("06 loading Enri atlas");
     char_atlas = load_exact_file(CHAR_ATLAS_PATH, CHAR_ATLAS_BYTES);
     if (!char_atlas) fatal_error("Could not load enri_atlas.rgba8888");
+    boot_diag("06a Enri atlas loaded");
     g_ui_char_atlas = char_atlas;
 
+    boot_diag("07 loading A1 overlay");
     g_a1_overlay = load_exact_file(A1_PATH, PIC_TEX_BYTES);
     if (!g_a1_overlay) fatal_error("Could not load a1_overlay.rgba8888");
+    boot_diag("07a A1 overlay loaded");
+    boot_diag("08 loading fog overlay");
     g_fog_overlay = load_exact_file(FOG_A1_PATH, FOG_A1_BYTES);
     if (!g_fog_overlay) fatal_error("Could not load fog_a1.rgba8888");
+    boot_diag("08a fog overlay loaded");
+    boot_diag("09 loading key animation");
     g_key_anim = load_exact_file(KEY_ANIM_PATH, KEY_ANIM_BYTES);
     if (!g_key_anim) fatal_error("Could not load key_anim.rgba8888");
+    boot_diag("09a key animation loaded");
+    boot_diag("10 loading Lucas fall atlas");
     g_lucas_fall_atlas = load_exact_file(LUCAS_FALL_ATLAS_PATH, LUCAS_FALL_ATLAS_BYTES);
     if (!g_lucas_fall_atlas) fatal_error("Could not load lucas_fall_atlas.rgba8888");
+    boot_diag("10a fall atlas loaded");
+    boot_diag("11 loading Lucas corpse");
     g_lucas_corpse = load_exact_file(LUCAS_CORPSE_PATH, LUCAS_CORPSE_TEX_BYTES);
     if (!g_lucas_corpse) fatal_error("Could not load lucas_corpse.rgba8888");
 
+    boot_diag("11a base textures loaded");
     init_gu();
+    boot_diag("12 GU initialized");
     if (!init_runtime_font())
         fatal_error("Could not load v0.7.9 runtime font assets");
+    boot_diag("13 font loaded");
     if (!init_russian())
         fatal_error("Could not load russian177.bin");
+    boot_diag("14 Russian data loaded");
     if (!init_ui_data())
         fatal_error("Could not load v0.7.9 UI assets");
+    boot_diag("15 UI loaded");
     load_common_vm();
+    boot_diag("16 common VM loaded");
     set_bgm_track(TITLE_BGM_PATH);
     start_bgm();
+    boot_diag("17 audio thread started");
 
 TITLE_ENTRY:
     g_request_title = 0;
@@ -7175,6 +7384,7 @@ TITLE_ENTRY:
     move_progress = 0.0f;
     player_animation_reset(&g_player_animation);
 
+    boot_diag("18 entering title menu");
     title_choice = ui_title_scene(&progress);
     lang = g_language;
 
