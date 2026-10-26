@@ -6755,9 +6755,38 @@ static int vm_execute_page(
             if(target>=0 && m->id!=source_map_id){p+=count*5;continue;}
             if(target==0)target=source_event_id;
             if(target>0) {
-                if(start_event_route(m,target,p,count,flags) && (flags&4))
-                    while(g_routes[target].records)
+                if(start_event_route(m,target,p,count,flags) && (flags&4)) {
+                    /* Map095's Will pursuit includes forced NPC routes which
+                     * can remain blocked by an adjacent moving actor.  The
+                     * original unbounded Wait loop would then freeze the
+                     * cutscene forever while audio continued to play.
+                     * Watch actual route advancement, not elapsed scene time,
+                     * so intentional waits and long animations remain intact.
+                     * After 180 stalled frames, allow the obstructed command
+                     * to be skipped by the existing route runner. */
+                    int stalled_frames = 0;
+                    int last_index = -1, last_remaining = -1;
+                    float last_x = 0.0f, last_y = 0.0f;
+                    while(g_routes[target].records) {
+                        EventRoute *route = &g_routes[target];
+                        if(m->id == 95) {
+                            if(route->index != last_index ||
+                               route->remaining != last_remaining ||
+                               route->start_x != last_x ||
+                               route->start_y != last_y)
+                                stalled_frames = 0;
+                            else if(++stalled_frames >= 180) {
+                                route->flags |= 2; /* skip blocked step */
+                                stalled_frames = 0;
+                            }
+                            last_index = route->index;
+                            last_remaining = route->remaining;
+                            last_x = route->start_x;
+                            last_y = route->start_y;
+                        }
                         vm_render_frame(m,char_atlas,*tile_x,*tile_y,*direction_row,0,0);
+                    }
+                }
             } else if((flags&4) || !start_player_route(p,count,flags,tile_x,tile_y,direction_row)) {
                 free(g_player_route.records);memset(&g_player_route,0,sizeof(g_player_route));
                 vm_execute_move_route(m,char_atlas,tile_x,tile_y,direction_row,p,count,target);
