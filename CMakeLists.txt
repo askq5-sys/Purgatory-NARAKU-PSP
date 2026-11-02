@@ -22,7 +22,7 @@ endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE NARAKU_GAME_DIR=\"${NARAKU_GAME_DIR}\")
 
 target_link_libraries(${PROJECT_NAME}
-    pspdebug pspgu pspge pspdisplay pspctrl pspaudio pspkernel
+    pspdebug pspgu pspge pspdisplay pspctrl pspaudio
 )
 
 if(NARAKU_COMPRESSED_ASSETS)
