@@ -2,7 +2,7 @@
 
 An unofficial PSP homebrew port of Purgatory -NARAKU-.
 
-## Current version: 1.7.10
+## Current version: 1.7.11
 
 The port implements Enri's and Will's stories, the ending routes,
 secret-route events, and bonus areas. The developer has completed
@@ -24,6 +24,16 @@ as a guarantee that every branch is free of bugs.
 - Save-file deletion with confirmation in all five languages.
 - Settings values aligned to a shared right edge.
 - Compressed market build for smaller texture and audio assets.
+
+## Changes in 1.7.11
+
+- Fixed the black screen on real PSP hardware: the EBOOT no longer links
+  PSP kernel libraries, which only emulators accept.
+- Fixed Enri's head looking transparent when walking past dark doorways.
+- Fixed an out-of-bounds read in transfer handling.
+- Restored the XMB icon, background and music.
+
+Real PSP testing is still pending; reports are welcome.
 
 ## Changes in 1.7.9–1.7.10
 
@@ -118,7 +128,7 @@ For emulator reports, include PPSSPP version, device and graphics backend.
 Host checks cover translation lookup, Cyrillic coverage, preservation of
 existing dialogue/script resources, selected runtime regressions, and
 compressed-asset handling. OpenGL and Vulkan startup were confirmed in
-PPSSPP. Real PSP compatibility, visual layout and complete route coverage
+PPSSPP. Real PSP startup (fixed in 1.7.11), visual layout and complete route coverage
 still require tester verification.
 
 ## Credits

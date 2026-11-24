@@ -29,7 +29,8 @@ test "$missing" = 0
 
 mkdir -p "$ROOT_DIR/build"
 cd "$ROOT_DIR/build"
-psp-cmake ..
+# Compressed-asset support also reads plain files, so one EBOOT fits both layouts.
+psp-cmake -DNARAKU_COMPRESSED_ASSETS=ON -DNARAKU_GAME_DIR=NARAKU ..
 make -B -j"$(nproc)"
 test -s EBOOT.PBP
 python3 "$ROOT_DIR/tools/check_eboot_imports.py" EBOOT.PBP
