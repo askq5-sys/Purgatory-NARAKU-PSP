@@ -63,6 +63,15 @@ Build and install into an existing game folder (PPSSPP by default):
 ./tools/build_deploy.sh [GAME_DIR]
 ```
 
+Assets from `tools/assets_patch.txt` are copied from the local `assets/`
+folder when present; otherwise the copies already installed in the game
+folder are kept. To apply the doorway shading fix to the installed maps,
+point the script at the PC game's `data` folder:
+
+```bash
+NARAKU_ORIGINAL_DATA=/path/to/pc-game/data ./tools/build_deploy.sh
+```
+
 Build the compressed market folder after that:
 
 ```bash
