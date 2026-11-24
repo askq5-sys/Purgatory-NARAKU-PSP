@@ -51,21 +51,27 @@ Its wording and layout have not undergone a complete Russian playthrough.
 
 ## Installation and builds
 
-The source/resource patch is incremental, not a standalone game or a
-precompiled EBOOT. Apply it over an existing port project. Building requires
-a working PSP SDK environment.
+The repository holds the runtime source and build tools, not the game data.
+`assets/` (converted game data), `original/` (files from the PC game) and
+`xmb/` (`ICON0.PNG`, `PIC1.PNG`, `SND0.AT3` for the PSP menu) are kept
+locally and are not committed. Building requires the
+[pspdev](https://github.com/pspdev/pspdev) SDK.
 
-Build the debug version:
-
-```bash
-./tools/build_deploy_v178.sh
-```
-
-Build the compressed market folder after the debug build:
+Build and install into an existing game folder (PPSSPP by default):
 
 ```bash
-./tools/build_market_v178.sh
+./tools/build_deploy.sh [GAME_DIR]
 ```
+
+Build the compressed market folder after that:
+
+```bash
+./tools/build_market.sh [SOURCE_GAME_DIR] [DEST_GAME_DIR]
+```
+
+Both scripts stop if the EBOOT imports PSP kernel libraries
+(`tools/check_eboot_imports.py`): such an EBOOT runs in PPSSPP but shows a
+black screen on a real PSP.
 
 The market build is produced in `NARAKU_MARKET` on the PC, while its EBOOT
 uses the game root `PSP/GAME/NARAKU`. Rename the folder to `NARAKU` when
@@ -74,6 +80,21 @@ installing it on a PSP or PPSSPP device. Keep the EBOOT and compressed
 in-game save. Avoid emulator savestates created with an older executable.
 
 Select Russian through Settings → Language → Русский.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `main.c`, `runtime/` | PSP runtime |
+| `tools/build_deploy.sh`, `tools/build_market.sh` | Build and install scripts |
+| `tools/assets_patch.txt` | Assets copied by `build_deploy.sh` |
+| `tools/prepare_*.py`, `tools/verify_*.py` | Conversion of the PC game data |
+| `tools/fix_doorway_gradient_priority.py` | Doorway shading fix for converted maps |
+| `tests/` | Host checks (`tests/run_host_checks.sh`) |
+| `docs/releases/` | Release notes |
+
+Per-version deploy scripts and asset lists up to 1.7.8 were removed from the
+tree; they remain in the git history (commit `b564dfe`).
 
 ## Bug reports
 
