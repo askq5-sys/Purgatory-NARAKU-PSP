@@ -5,6 +5,7 @@
 #include <pspge.h>
 #include <pspdebug.h>
 #include <pspaudio.h>
+#include <psppower.h>
 
 #include <errno.h>
 #include <limits.h>
@@ -313,7 +314,6 @@ typedef struct {
 } PictureSlot;
 static PictureSlot g_pictures[MAX_ACTIVE_PICTURES];
 static volatile int g_audio_stop = 0;
-static char g_scene_trace_path[512] = ASSET_ROOT "scene_trace.log";
 #ifdef NARAKU_BOOT_DIAGNOSTICS
 static char g_boot_diag_path[512] = ROOT "BOOTLOG.TXT";
 static int g_boot_diag_row;
@@ -363,15 +363,6 @@ static void boot_diag_init(const char *argv0) { (void)argv0; }
 static void boot_diag(const char *stage) { (void)stage; }
 static void boot_diag_error(const char *message) { (void)message; }
 #endif
-
-static void scene_trace(int map, int event, int offset, int op)
-{
-    FILE *f = fopen(g_scene_trace_path, "a");
-    if (!f) f = fopen(ASSET_ROOT "scene_trace.log", "a");
-    if (!f) return;
-    fprintf(f, "map=%d event=%d offset=%d op=%d\n", map,event,offset,op);
-    fclose(f);
-}
 
 static uint8_t g_switches[MAX_SWITCHES];
 static int g_save_enabled = 1;
@@ -3754,6 +3745,20 @@ static void draw_fall_frame(int slot, float foot_x, float foot_y)
     );
 }
 
+/* First and last tile index that can touch the screen along one axis.  The
+ * range is one tile wider on each side; callers keep their exact checks. */
+static void visible_tile_range(float origin, float camera, int screen, int count,
+                               int *first, int *last)
+{
+    float start = (camera - origin) / (float)TILE_PX;
+    int a = (int)floorf(start) - 1;
+    int b = (int)floorf(start + (float)screen / (float)TILE_PX) + 1;
+    if (a < 0) a = 0;
+    if (b > count - 1) b = count - 1;
+    *first = a;
+    *last = b;
+}
+
 static void draw_map_pass(
     const MapState *m, int upper,
     float camera_x, float camera_y, float origin_x, float origin_y)
@@ -3762,6 +3767,7 @@ static void draw_map_pass(
     TextureVertex batch[MAP_BATCH_TILES * 2];
     int batch_tiles = 0;
     int y;
+    int x0, x1, y0, y1;
     int bound_atlas = -1;
     int bound_filter = -1;
 
@@ -3788,12 +3794,15 @@ static void draw_map_pass(
      * even one frame creates a visible contour around bricks and sprites. */
     set_pixel_art_texture_state();
 
-    for (y = 0; y < m->h; ++y) {
+    /* Walk only the tiles around the screen instead of the whole map. */
+    visible_tile_range(origin_x, camera_x, SCREEN_W, m->w, &x0, &x1);
+    visible_tile_range(origin_y, camera_y, SCREEN_H, m->h, &y0, &y1);
+    for (y = y0; y <= y1; ++y) {
         float dy = origin_y + (float)(y * TILE_PX) - camera_y;
         int x;
         if (dy <= -TILE_PX || dy >= SCREEN_H) continue;
 
-        for (x = 0; x < m->w; ++x) {
+        for (x = x0; x <= x1; ++x) {
             float dx = origin_x + (float)(x * TILE_PX) - camera_x;
             int z;
             if (dx <= -TILE_PX || dx >= SCREEN_W) continue;
@@ -4468,7 +4477,7 @@ static void tick_event_routes(const MapState *m)
                                 memset(last_index,0,sizeof(last_index));last_map=m->id;
                             }
                             if (last_index[id] != r->index) {
-                                FILE *log=fopen(g_scene_trace_path,"a");
+                                FILE *log=fopen(ASSET_ROOT "route_trace.log","a");
                                 if(log) {
                                     fprintf(log,"map=%d event=%d blocked step=%d\n",m->id,id,r->index);
                                     fclose(log);
@@ -6222,7 +6231,6 @@ static int vm_execute_page(
     end = p + pg->cmd_size;
 
     while (p < end) {
-        if (source_map_id == 12) scene_trace(source_map_id,source_event_id,(int)(p-base),*p);
         int op = *p++;
         if (op == VM_OP_END) break;
 
@@ -7293,16 +7301,11 @@ int main(int argc, char *argv[])
     (void)argc;
     boot_diag_init(argv && argc > 0 ? argv[0] : NULL);
     boot_diag("01 main entered");
-    if (argc > 0 && argv && argv[0]) {
-        const char *slash = strrchr(argv[0], '/');
-        if (slash && (size_t)(slash - argv[0]) < sizeof(g_scene_trace_path) - 32) {
-            size_t n = (size_t)(slash - argv[0]) + 1;
-            memcpy(g_scene_trace_path, argv[0], n);
-            strcpy(g_scene_trace_path + n, "assets/scene_trace.log");
-        }
-    }
-    scene_trace(0,0,0,109);
     (void)argv;
+
+    /* Homebrew starts at 222 MHz; the full 333 MHz leaves headroom for zlib
+     * streaming and drawing on real hardware. Emulators ignore the setting. */
+    scePowerSetClockFrequency(333, 333, 166);
 
     memset(&map, 0, sizeof(map));
     reset_runtime_game_state();
