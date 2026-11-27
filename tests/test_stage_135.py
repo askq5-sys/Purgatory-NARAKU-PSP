@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json, struct, sys, re, subprocess, tempfile
 from PIL import Image
@@ -55,7 +58,7 @@ assert w.localized_string('The axe broke.',texts,'en_US')==r'The \c[8]Axe\c[0] b
 print(f'PASS: {pages} original stage pages, {route_count} autonomous routes, collisions, atlas bounds, all picture/audio dependencies')
 
 # Run the real nonblocking scheduler against the actual packed event resources.
-s=(r/'main.c').read_text();a=s.index('static int vm_read_event(');b=s.index('static int vm_active_page(',a)
+s=main_source(r);a=s.index('static int vm_read_event(');b=s.index('static int vm_active_page(',a)
 defines='\n'.join(re.findall(r'^#define VM_OP_\w+ \d+',s,re.M))
 pre=r'''#include <stdint.h>
 #include <stdio.h>

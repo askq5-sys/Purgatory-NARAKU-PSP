@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text();a=s.index('static int is_chase_enemy(');b=s.index('/* A supported active VM page',a)
+r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static int is_chase_enemy(');b=s.index('/* A supported active VM page',a)
 pre='''#include <stdint.h>
 #include <assert.h>
 #define MAX_EVENT_ID 160

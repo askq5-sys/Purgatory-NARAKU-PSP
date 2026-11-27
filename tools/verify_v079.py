@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'tests'))
+from source_util import main_source
 #!/usr/bin/env python3
 """Regression checks against the user's original data and executable C picture math."""
 import argparse,json,struct,subprocess,tempfile
@@ -21,7 +24,7 @@ def main():
     raw=w.compile_vm_commands({'list':[{'code':205,'parameters':[7,{'list':[{'code':3}], 'wait':False,'repeat':True,'skippable':True}]}]},[])
     assert raw[:6]==struct.pack('<BhHB',w.VM_OP_MOVE_ROUTE_EX,7,1,3)
     root=Path(__file__).resolve().parent.parent
-    src=(root/'main.c').read_text()
+    src=main_source(root)
     start=src.index('static float picture_ease(');end=src.index('static void draw_vm_pictures',start)
     structure=src[src.index('typedef struct {\n    int number, resource_id'):src.index('static PictureSlot g_pictures')]
     code='#include <assert.h>\n#include <math.h>\n#define MAX_ACTIVE_PICTURES 5\n'+structure+'static PictureSlot g_pictures[5];\n'+src[start:end]+'''

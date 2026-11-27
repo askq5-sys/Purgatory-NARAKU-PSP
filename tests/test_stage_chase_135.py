@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import runpy, subprocess, tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 def check(code):
     with tempfile.TemporaryDirectory()as td:
         p=Path(td)/'t.c';e=Path(td)/'t';p.write_text(code)

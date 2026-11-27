@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import re,struct,sys,tempfile,subprocess
 from PIL import Image
@@ -17,7 +20,7 @@ for e in mp['events']:
   assert f'{{95,{e["id"]},{i},{n},{flags},{name}}}' in header
   routes+=1
 assert routes==5
-s=(r/'main.c').read_text();start=s.index('static void tick_factory_autonomous(');end=s.index('static void tick_player_route(',start)
+s=main_source(r);start=s.index('static void tick_factory_autonomous(');end=s.index('static void tick_player_route(',start)
 pre='''#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile
 from PIL import Image
@@ -36,7 +39,7 @@ for mid in range(32,36):
    expected=Image.new('RGBA',frame.size);expected.alpha_composite(frame)
    assert atlases[page].crop((sx,sy,sx+sw,sy+sh)).tobytes()==expected.tobytes();counts['native_frames']+=1
 # Actual renderer must mask texture-page bits, bind the right atlas and preserve display sizes.
-s=(r/'main.c').read_text();a=s.index('static void draw_event_sprite_record(');b=s.index('static int is_dedicated_story_key_event(',a)
+s=main_source(r);a=s.index('static void draw_event_sprite_record(');b=s.index('static int is_dedicated_story_key_event(',a)
 pre='''#include <assert.h>
 #include <stdint.h>
 #include <string.h>

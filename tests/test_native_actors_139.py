@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Verify native actor pixels and unchanged story scripts across supported maps."""
 from pathlib import Path
 import json, struct, sys, subprocess, tempfile
@@ -100,7 +103,7 @@ for i in range(ne):
         assert b[blob+off:blob+off+6] == bytes([12,2,0,4,120,0])
 
 # Run the actual reveal function and actual first-wait override in host C.
-s = (r/'main.c').read_text()
+s = main_source(r)
 helper = s[s.index('static unsigned int g_ambush_reveal_start;'):s.index('static void draw_event_sprite_record(')]
 start = s.index('            /* Button-room arrival:')
 override = s[start:s.index('            vm_wait_frames(frames,', start)]

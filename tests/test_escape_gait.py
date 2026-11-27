@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text();a=s.index('static void draw_event_sprite_record(');b=s.index('static int is_dedicated_story_key_event(',a)
+r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static void draw_event_sprite_record(');b=s.index('static int is_dedicated_story_key_event(',a)
 pre='''#include <assert.h>
 #include <stdint.h>
 #include <string.h>

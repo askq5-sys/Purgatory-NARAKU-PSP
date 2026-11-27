@@ -110,13 +110,42 @@ Select Russian through Settings → Language → Русский.
 
 | Path | Contents |
 | --- | --- |
-| `main.c`, `runtime/` | PSP runtime |
+| `main.c` | Settings, shared state and the main loop |
+| `runtime/*.inc` | Runtime modules included by `main.c` (see below) |
+| `runtime/*.h` | Self-contained helpers (routes, animation, puzzles) |
 | `tools/build_deploy.sh`, `tools/build_market.sh` | Build and install scripts |
 | `tools/assets_patch.txt` | Assets copied by `build_deploy.sh` |
 | `tools/prepare_*.py`, `tools/verify_*.py` | Conversion of the PC game data |
 | `tools/fix_doorway_gradient_priority.py` | Doorway shading fix for converted maps |
 | `tests/` | Host checks (`tests/run_host_checks.sh`) |
 | `docs/releases/` | Release notes |
+
+### Runtime modules
+
+The game is compiled as one C file: `main.c` includes the modules below in
+this order, so they share its `static` state and must stay in that order.
+Tests read the combined source through `tests/source_util.py`.
+
+| Module | Contents |
+| --- | --- |
+| `types.inc` | Basic data types |
+| `helpers.inc` | Small helpers, HOME exit callback |
+| `files.inc` | Asset loading (plain and `.z`) |
+| `graphics.inc` | GU setup and drawing primitives |
+| `font_text.inc` | UTF-8 font, text layout, message surface |
+| `input.inc` | Controller input, language |
+| `audio.inc` | Music streaming, sound effects |
+| `progress.inc` | Switches, variables, items, save files |
+| `ui_menus.inc` | Title, item, options, save/load menus |
+| `map_load.inc` | Map, event and atlas loading |
+| `vm_pages.inc` | Event page selection |
+| `world_draw.inc` | Camera, tiles, event sprites, pictures |
+| `event_routes.inc` | Move routes, scripted actors |
+| `world_frame.inc` | Picture animation, special rooms, frame rendering |
+| `vm_text.inc` | Script VM: flashes, tints, messages, choices |
+| `vm_interpreter.inc` | Script VM: commands, move routes, transfers |
+| `intro.inc` | Opening, Map001 intro |
+| `messages.inc` | Runtime messages, screen fades |
 
 Per-version deploy scripts and asset lists up to 1.7.8 were removed from the
 tree; they remain in the git history (commit `b564dfe`).

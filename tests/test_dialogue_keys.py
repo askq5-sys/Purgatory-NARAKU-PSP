@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text();a=s.index('static char *style_green_key_dialogue(');b=s.index('static void vm_wait_text_page(',a)
+r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static char *style_green_key_dialogue(');b=s.index('static void vm_wait_text_page(',a)
 pre=r'''#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,4 +30,4 @@ raw=(r/'assets/map012_vm.bin').read_bytes();assert b'thesematerials'not in raw a
 assert 'm->id != 12' not in s[s.index('static void vm_wait_text(\n'):s.index('static int vm_wait_choices(')]
 print('PASS: original capitalization, red/green/gold colors, surrounding color restoration, normalized PC wraps and transfer-independent reflow')
 
-assert 'message = "Obtained an \\\\c[8]Axe\\\\c[0].";' in (r/"main.c").read_text()
+assert 'message = "Obtained an \\\\c[8]Axe\\\\c[0].";' in main_source(r)

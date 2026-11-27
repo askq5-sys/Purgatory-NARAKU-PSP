@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """visible_tile_range must keep every tile the full-map loop would draw."""
 from pathlib import Path
 import re
@@ -57,7 +60,7 @@ int main(void)
 
 class VisibleTileRangeTests(unittest.TestCase):
     def test_range_covers_every_visible_tile(self):
-        source = (ROOT / "main.c").read_text()
+        source = main_source(ROOT)
         function = extract(source, "static void visible_tile_range(")
         with tempfile.TemporaryDirectory() as tmp:
             c = Path(tmp) / "t.c"
@@ -68,7 +71,7 @@ class VisibleTileRangeTests(unittest.TestCase):
             self.assertEqual(out.returncode, 0, out.stdout)
 
     def test_release_has_no_scene_trace(self):
-        source = (ROOT / "main.c").read_text()
+        source = main_source(ROOT)
         self.assertFalse("scene_trace" in source, "debug scene_trace logging is back in main.c")
         # Remaining debug logging must stay behind its compile-time switch.
         for match in re.finditer(r'fopen\([^)]*,\s*"a"\)', source):

@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import runpy,subprocess,tempfile,json
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 n=runpy.run_path(str(r/'tests/test_flashback_text.py'))
 pre=n['pre'].split('static void vm_wait_text_page(')[0]
 a=s.index('static int latin_word_cp(');b=s.index('static int latin_word_width(',a)

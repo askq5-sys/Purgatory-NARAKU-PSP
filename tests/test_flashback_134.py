@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,re,subprocess,tempfile
-root=Path(__file__).resolve().parents[1];s=(root/'main.c').read_text()
+root=Path(__file__).resolve().parents[1];s=main_source(root)
 a=s.index('static char *strip_message_font_controls(');b=s.index('static void vm_pump_stage_message(const MapState *m, void *char_atlas, int x, int y, int direction)\n{',a)
 pre=r'''#include <stdint.h>
 #include <stdlib.h>
@@ -60,8 +63,8 @@ print('PASS: complete original elevator flashback pages, portraits/audio, Cleave
 # Exercise direction lock/unlock and walking in the actual C scheduler.
 import runpy
 n=runpy.run_path(str(root/'tests/test_s003_runtime.py'));pre=n['pre'];glob=n['globals_']
-a=(root/'main.c').read_text().index('static int event_route_can_step(');b=(root/'main.c').read_text().index('static void tick_player_route(',a)
+a=main_source(root).index('static int event_route_can_step(');b=main_source(root).index('static void tick_player_route(',a)
 post=r'''int main(void){MapState m={47,1};uint8_t route[]={35,0,0,0,0,3,0,0,0,0,36,0,0,0,0,16,0,0,0,0};first=0;active=0;assert(start_event_route(&m,3,route,4,0));int initial=g_event_direction[3];tick_event_routes(&m);assert(g_event_direction_fix[3]&&g_event_direction[3]==initial);int moving=0;for(int i=0;i<100;++i){tick_event_routes(&m);if(g_event_animation[3].pattern!=1)moving=1;}assert(!g_routes[3].records&&!g_event_direction_fix[3]&&g_event_direction[3]==0&&moving);return 0;}'''
 with tempfile.TemporaryDirectory()as tmp:
- p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(pre+glob+(root/'main.c').read_text()[a:b]+post);subprocess.run(['cc','-std=c99','-I',str(root),str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
+ p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(pre+glob+main_source(root)[a:b]+post);subprocess.run(['cc','-std=c99','-I',str(root),str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 print('PASS: actual C elevator actor direction lock, animated walking and unlock')

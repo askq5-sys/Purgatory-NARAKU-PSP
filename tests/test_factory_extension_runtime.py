@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile,runpy
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 def compile_run(code):
  with tempfile.TemporaryDirectory()as tmp:
   p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(code);subprocess.run(['cc','-std=c99','-I',str(r),str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)

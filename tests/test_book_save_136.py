@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Run the real slot UI with disabled menu saving and a held opening button."""
 from pathlib import Path
 import re,subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 a=s.index('static int ui_save_load_scene(');b=s.index('static const char *title_path_for_language',a)
 pre=r'''#include <stdint.h>
 #include <stddef.h>

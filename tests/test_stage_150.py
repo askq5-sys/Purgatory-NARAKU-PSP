@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Audit original elevator/surface/Ending 2 resources and execute lift scheduler."""
 from pathlib import Path
 import ast,json,re,struct,subprocess,sys,tempfile
@@ -66,7 +69,7 @@ assert any(c['code']==201 and c['parameters'][1:4]==[83,14,3] for c in adapted)
 print(f'PASS: {page_count} original pages, passability, native lift poses, 36 actor frames, all picture/audio dependencies and Ending 2 boundary')
 
 # Reuse only fixture declarations, not the older test's resource execution.
-s=(r/'main.c').read_text();tree=ast.parse((r/'tests/test_stage_135.py').read_text())
+s=main_source(r);tree=ast.parse((r/'tests/test_stage_135.py').read_text())
 pre=next(ast.literal_eval(n.value)for n in tree.body if isinstance(n,ast.Assign)and any(isinstance(t,ast.Name)and t.id=='pre'for t in n.targets))
 defines='\n'.join(re.findall(r'^#define VM_OP_\w+ \d+',s,re.M))
 a=s.index('static int vm_read_event(');b=s.index('static int vm_active_page(',a)

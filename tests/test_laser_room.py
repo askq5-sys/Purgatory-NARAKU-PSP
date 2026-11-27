@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile,json,struct
-root=Path(__file__).resolve().parents[1];s=(root/'main.c').read_text();a=s.index('static void tick_laser_room(');b=s.index('static void tick_pressing_room(',a)
+root=Path(__file__).resolve().parents[1];s=main_source(root);a=s.index('static void tick_laser_room(');b=s.index('static void tick_pressing_room(',a)
 pre='''#include <assert.h>
 typedef struct {int id;} MapState;
 static int g_laser_room_frame,g_laser_stop_count,g_laser_route_index,se;

@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Execute runtime touch dispatch and cinematic alpha, including spent pages."""
 from pathlib import Path
 import subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text();a=s.index('static int vm_find_event_at(');b=s.index('static int vm_event_blocks_except',a)
+r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static int vm_find_event_at(');b=s.index('static int vm_event_blocks_except',a)
 pre='''#include <assert.h>
 #include "runtime/render_boundaries.h"
 typedef struct{int id,w,vm_event_count;void*vm_bin;}MapState;

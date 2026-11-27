@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,struct,subprocess,tempfile
-root=Path(__file__).resolve().parents[1];s=(root/'main.c').read_text();a=s.index('static void tick_pressing_room(');b=s.index('/* Map032 parallel pages',a)
+root=Path(__file__).resolve().parents[1];s=main_source(root);a=s.index('static void tick_pressing_room(');b=s.index('/* Map032 parallel pages',a)
 pre='''#include <assert.h>
 #include "runtime/pressing_room.h"
 typedef struct {int id;} MapState;

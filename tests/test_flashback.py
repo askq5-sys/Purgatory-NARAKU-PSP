@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile,json
 root=Path(__file__).resolve().parents[1]
-s=(root/'main.c').read_text();a=s.index('static int vm_cell_owns_transfer(');b=s.index('static int vm_touch_transfer_at',a)
+s=main_source(root);a=s.index('static int vm_cell_owns_transfer(');b=s.index('static int vm_touch_transfer_at',a)
 pre='''#include <assert.h>
 #include "runtime/player_animation.h"
 typedef struct {int vm_bin,vm_event_count;} MapState;

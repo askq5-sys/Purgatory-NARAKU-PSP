@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Exercise native event-tile passage and the original panel opening timeline."""
 from pathlib import Path
 import re,struct,subprocess,tempfile,sys
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
 mp=w.read_json(r.parent/'original/data/Map069.json');ts=w.read_json(r.parent/'original/data/Tilesets.json')[mp['tilesetId']]
 vb=(r/'assets/map069_vm.bin').read_bytes();ne=struct.unpack_from('<H',vb,4)[0];pb=20+ne*10

@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Compile the actual main-loop contact calls; verify logical-cell semantics."""
 from pathlib import Path
 import subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 a=s.index('            int logical_contact = map.id==72 && moving;')
 b=s.index('            if (contact) {',a)
 body=s[a:b]

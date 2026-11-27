@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile,runpy
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
@@ -44,7 +47,7 @@ for i in range(ns):
  assert flags&4
  if rec[-1]in(3,4):assert flags&128 and flags&64 and sx+sw*3<=512 and sy+sh*4<=512
  else:assert sx+sw<=512 and sy+sh<=512
-s=(r/'main.c').read_text();n=runpy.run_path(str(r/'tests/test_s003_runtime.py'));pre=n['pre'];glob=n['globals_'];a=s.index('static int event_route_can_step(');b=s.index('static void tick_player_route(',a)
+s=main_source(r);n=runpy.run_path(str(r/'tests/test_s003_runtime.py'));pre=n['pre'];glob=n['globals_'];a=s.index('static int event_route_can_step(');b=s.index('static void tick_player_route(',a)
 post='''int main(void){MapState m={30,1};uint8_t jump[]={14,0,0,0,0,15,10,0,0,0,14,0,0,0,0};
 g_event_move_speed[1]=3;assert(start_event_route(&m,1,jump,3,0));
 tick_event_routes(&m);assert(g_routes[1].jump_peak==7 && g_routes[1].remaining==13 && g_event_jump_height[1]==3.25f);

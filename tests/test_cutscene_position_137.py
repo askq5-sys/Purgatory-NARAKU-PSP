@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Run actual frame/route code past the two-step nonwaiting lever approach."""
 from pathlib import Path
 import re,subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text();a=s.index('static void tick_player_route(');b=s.index('static float picture_ease(',a);engine=s[a:b];a=s.index('static void vm_render_frame(\n');b=s.index('static void vm_wait_frames(',a);frame=s[a:b]
+r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static void tick_player_route(');b=s.index('static float picture_ease(',a);engine=s[a:b];a=s.index('static void vm_render_frame(\n');b=s.index('static void vm_wait_frames(',a);frame=s[a:b]
 pre=r'''#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>

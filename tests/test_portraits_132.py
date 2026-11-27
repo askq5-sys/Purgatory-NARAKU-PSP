@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile
 import numpy as np
@@ -13,7 +16,7 @@ for row in rows:
  assert not packed[0].any()and not packed[:,0].any();assert tw>=bw*.5 and th>=bh*.5
  assert [x,y,x+bw,y+bh]==row['bounds']and(cw,ch)==tuple(round(v*.5)for v in src.size)
 # Exercise actual loader and draw routine for the new format and legacy pictures.
-s=(r/'main.c').read_text();a=s.index('#define MAX_ACTIVE_PICTURES');b=s.index('static volatile int g_audio_stop',a);types=s[a:b]
+s=main_source(r);a=s.index('#define MAX_ACTIVE_PICTURES');b=s.index('static volatile int g_audio_stop',a);types=s[a:b]
 a=s.index('static PictureSlot *picture_slot(');b=s.index('static void draw_fog_a1_overlay(',a);loader=s[a:b]
 a=s.index('static void draw_vm_pictures(');b=s.index('static void draw_lucas_fall_event(',a);drawing=s[a:b]
 pre='''#include <stdint.h>

@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text();a=s.index('static char *style_green_key_dialogue(');b=s.index('/* Reflow the PC-authored',a)
+r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static char *style_green_key_dialogue(');b=s.index('/* Reflow the PC-authored',a)
 pre=r'''#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>

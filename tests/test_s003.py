@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,re,struct
 r=Path(__file__).resolve().parents[1]
@@ -10,5 +13,5 @@ for mid,page in [(24,5),(25,1)]:
  walking=[x for x in records if x[-1]==3 and x[-2]&0x80];assert walking
  for x in walking:
   _,_,sx,sy,sw,sh,priority,flags,eid=x;assert flags&0x40 and sx+6*sw<=512 and sy+2*sh<=512 and flags&4
-s=(r/'main.c').read_text();assert 'if (is_chase_map(map.id)'in s
+s=main_source(r);assert 'if (is_chase_map(map.id)'in s
 print('PASS: original custom movement routes, three walking patterns/four directions, atlas bounds and stationary-player contact')

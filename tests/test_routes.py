@@ -1,8 +1,11 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Exercise the actual asynchronous player-route tick from main.c on host."""
 from pathlib import Path
 import subprocess,tempfile
 root=Path(__file__).resolve().parents[1]
-s=(root/'main.c').read_text()
+s=main_source(root)
 a=s.index('static void tick_player_route(');b=s.index('static float picture_ease(',a)
 pre=r'''
 #include <stdint.h>

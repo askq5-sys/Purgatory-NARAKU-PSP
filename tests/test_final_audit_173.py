@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import sys,tempfile,subprocess
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
@@ -10,7 +13,7 @@ for p in sorted((r.parent/'original/data').glob('Map[0-9][0-9][0-9].json')):
    count+=1
    if not w.page_vm_supported(pg):exceptions.append((mid,ev['id'],j))
 assert count==3543 and exceptions==[(32,20,1)]
-s=(r/'main.c').read_text();a=s.index('static void tick_factory_parallel(');b=s.index('static void render_world(',a)
+s=main_source(r);a=s.index('static void tick_factory_parallel(');b=s.index('static void render_world(',a)
 assert 'Original Set Event Location' in s[a:b] and 'g_event_shift_x[19]=g_event_shift_y[19]=0;'in s[a:b]
 assert '(message_len>=4 && !memcmp(message,"END ",4))'in s
 texts=w.read_json(r.parent/'original/data/I18NTexts.json');mp=w.read_json(r.parent/'original/data/Map082.json')

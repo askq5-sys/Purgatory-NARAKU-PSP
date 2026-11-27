@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,struct,sys
 from PIL import Image
@@ -9,5 +12,5 @@ key=bytes.fromhex(json.load(open(r.parent/'original/data/System.json'))['encrypt
 normalized=Image.new('RGBA',frame.size);normalized.alpha_composite(frame);frame=normalized
 atlas=Image.frombytes('RGBA',(512,512),(r/'assets'/('map032_event_atlas1.rgba8888'if page_index else'map032_event_atlas.rgba8888')).read_bytes());assert atlas.crop((sx,sy,sx+sw,sy+sh)).tobytes()==frame.tobytes()
 assert sw/2==168 and sh/2==192
-s=(r/'main.c').read_text();assert 'float src_x = (float)(sp->sx & 0x0FFF)'in s
+s=main_source(r);assert 'float src_x = (float)(sp->sx & 0x0FFF)'in s
 print('PASS: machine source pixels retain full native resolution, atlas bounds and unchanged 168x192 display size')

@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import struct,subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 a=s.index('static int event_route_can_step(');b=s.index('static void tick_player_route(',a)
 globals_=s[s.index('static float g_event_shift_x'):s.index('static EventRoute g_player_route;')]
 pre=r'''#include <stdint.h>

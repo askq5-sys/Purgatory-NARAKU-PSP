@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,struct,sys,runpy,subprocess,tempfile
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
@@ -35,7 +38,7 @@ for mid in range(32,35):
    expected=b''.join(struct.pack('<Bhh',rc['code'],*(list(rc.get('parameters')or[])+[0,0])[:2])for rc in p['moveRoute']['list']if rc['code'])
    assert data==expected
 # Exercise new scheduler and machine parallel pages using actual runtime C.
-s=(r/'main.c').read_text();n=runpy.run_path(str(r/'tests/test_s003_runtime.py'));pre=n['pre'];glob=n['globals_']
+s=main_source(r);n=runpy.run_path(str(r/'tests/test_s003_runtime.py'));pre=n['pre'];glob=n['globals_']
 pre=pre.replace('static int first,active,blocked_axis;','static int first,active,blocked_axis,test_id=3;').replace('{3,6,8,first}','{test_id,6,8,first}')
 pre=pre.replace('static void play_vm_se_params(int a,int b,int c,int d){}','static int sounds;static void play_vm_se_params(int a,int b,int c,int d){++sounds;}\nstatic void vm_begin_screen_flash(int a,int b,int c,int d,int f){}\nstatic unsigned char g_switches[1024];')
 a=s.index('static int event_route_can_step(');b=s.index('static void tick_player_route(',a);engine=s[a:b]

@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import struct,subprocess,sys,tempfile
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
@@ -26,7 +29,7 @@ for eid in (2,8,9,10):
 for ev in original['events']:
  if ev and ev['id']not in(2,8,9,10):assert data['events'][ev['id']]==ev
 # Compile the actual margin drawing block and verify its scope and fade.
-s=(r/'main.c').read_text();a=s.index('        if (p->resource_id==104 && p->fit_screen)');b=s.index('        if (!p->portrait',a)
+s=main_source(r);a=s.index('        if (p->resource_id==104 && p->fit_screen)');b=s.index('        if (!p->portrait',a)
 code=r'''#include <assert.h>
 #define GU_ADD 0
 #define GU_SRC_ALPHA 0

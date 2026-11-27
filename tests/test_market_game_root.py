@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import unittest
 
@@ -7,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class MarketGameRootTests(unittest.TestCase):
     def test_market_build_uses_the_distribution_folder_name(self):
         cmake = (ROOT / "CMakeLists.txt").read_text()
-        source = (ROOT / "main.c").read_text()
+        source = main_source(ROOT)
         script = (ROOT / "tools/build_market.sh").read_text()
         self.assertIn('set(NARAKU_GAME_DIR "NARAKU" CACHE STRING', cmake)
         self.assertIn('NARAKU_GAME_DIR=\\"${NARAKU_GAME_DIR}\\"', cmake)

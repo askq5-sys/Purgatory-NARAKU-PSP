@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Exercise the actual picture renderer with a password note and a portrait."""
 from pathlib import Path
 import re,subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text();a=s.index('static void draw_vm_pictures(');b=s.index('static int lucas_fall_frame_from_switches',a)
+r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static void draw_vm_pictures(');b=s.index('static int lucas_fall_frame_from_switches',a)
 pre=r'''#include <assert.h>
 #include <stddef.h>
 #define SCREEN_W 480

@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import struct, subprocess, tempfile
 root=Path(__file__).resolve().parents[1]
@@ -14,7 +17,7 @@ axe=records(13)[0]
 assert axe[8]==69 and axe[7]&4 and axe[7]&2
 # Three original-resolution cleaver frames exist within the atlas.
 assert axe[2]+axe[4]*3<=512 and axe[3]+axe[5]<=512
-s=(root/'main.c').read_text();a=s.index('static void compute_camera(');b=s.index('static void draw_map_slot_local',a)
+s=main_source(root);a=s.index('static void compute_camera(');b=s.index('static void draw_map_slot_local',a)
 pre='''#include <assert.h>
 #define TILE_PX 24
 #define SCREEN_W 480

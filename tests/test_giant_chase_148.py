@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Run the real chase scheduler against running/walking escape timings."""
 from pathlib import Path
 import runpy,subprocess,tempfile
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text();n=runpy.run_path(str(r/'tests/test_s003_runtime.py'))
+r=Path(__file__).resolve().parents[1];s=main_source(r);n=runpy.run_path(str(r/'tests/test_s003_runtime.py'))
 a=s.index('static int event_route_can_step(');b=s.index('static void tick_player_route(',a);body=s[a:b]
 post=r'''static int chase(int tile_frames){MapState m={72,1};int px=44,py=5,tx=43,ty=5,elapsed=0;
 for(int id=0;id<MAX_EVENT_ID;id++){free(g_routes[id].records);memset(&g_routes[id],0,sizeof(EventRoute));g_event_shift_x[id]=g_event_shift_y[id]=0;g_event_through[id]=1;g_event_move_speed[id]=5;}

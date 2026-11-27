@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Execute the actual camera and check original underground scrolling payload."""
 from pathlib import Path
 import subprocess,tempfile,sys,struct
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 a=s.index('static void compute_camera(');b=s.index('static void draw_map_slot_local',a)
 pre='''#include <assert.h>
 #define TILE_PX 24

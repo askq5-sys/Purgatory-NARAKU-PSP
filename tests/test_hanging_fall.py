@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import struct,json,sys
 from PIL import Image
@@ -28,5 +31,5 @@ for mid in (21,23,27):
     for i in range(0,len(actual),4):
      assert actual[i+3]==expected[i+3]
      if expected[i+3]:assert actual[i:i+4]==expected[i:i+4]
-s=(r/'main.c').read_text();assert 'camera_y = g_actor_camera_y' in s and 'g_routes[5].remaining > 0' in s
+s=main_source(r);assert 'camera_y = g_actor_camera_y' in s and 'g_routes[5].remaining > 0' in s
 print('PASS: hanging source resampling, unchanged display size, all patterns and atlas bounds; continuous falling actor camera')

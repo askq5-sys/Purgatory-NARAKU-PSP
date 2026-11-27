@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import runpy,subprocess,tempfile,struct,json,sys
 from PIL import Image,ImageChops
-r=Path(__file__).resolve().parents[1];s=(r/'main.c').read_text()
+r=Path(__file__).resolve().parents[1];s=main_source(r)
 n=runpy.run_path(str(r/'tests/test_s003_runtime.py'))
 a=s.index('static int event_route_can_step(');b=s.index('static void tick_player_route(',a)
 pre=n['pre']+"\nstatic int trace_calls;\nstatic FILE*trace_open(const char*a,const char*b){trace_calls++;return NULL;}\n#define fopen trace_open\n"

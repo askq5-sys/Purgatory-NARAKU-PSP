@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
@@ -24,7 +27,7 @@ for mid,eid in ((15,10),(15,11),(16,35)):
  for cmd in page['list']:
   if cmd['code']==250:
    audio=cmd['parameters'][0];aid=w.EXACT_SE_IDS[w.audio_key(audio)];assert(r/'assets'/f'se_exact_{aid}.pcm').stat().st_size>0
-s=(r/'main.c').read_text();a=s.index('static void draw_tentacle_room_sprites(');b=s.index('static void draw_event_sprites(',a)
+s=main_source(r);a=s.index('static void draw_tentacle_room_sprites(');b=s.index('static void draw_event_sprites(',a)
 pre='''#include <assert.h>
 #define MAX_EVENT_ID 160
 #define TILE_PX 24

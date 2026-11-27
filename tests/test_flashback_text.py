@@ -1,6 +1,9 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import json,re,subprocess,tempfile
-root=Path(__file__).resolve().parents[1];s=(root/'main.c').read_text()
+root=Path(__file__).resolve().parents[1];s=main_source(root)
 a=s.index('static char *strip_message_font_controls(');b=s.index('static void vm_pump_stage_message(',a)
 pre=r'''#include <stdint.h>
 #include <stdlib.h>

@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Audit original elevator/surface/Ending 2 resources and execute lift scheduler."""
 from pathlib import Path
 import ast,json,re,struct,subprocess,sys,tempfile
@@ -63,7 +66,7 @@ for mid,eid in [(82,11),(82,28),(85,1)]:
  b=(O/f'map{mid:03}_events.bin').read_bytes();mw,mh,nt,ns=struct.unpack_from('<4H',b,4);sb=14+mw*mh*5+nt*20
  assert any(struct.unpack_from('<6H2BH',b,sb+i*16)[-1]==eid and struct.unpack_from('<6H2BH',b,sb+i*16)[7]&0xC4==0xC4 for i in range(ns))
 # Compatible character save bits and actual blocked-front event dispatch.
-s=(r/'main.c').read_text();a=s.index('static int vm_find_event_at(');b=s.index('static int vm_event_blocks_except(',a)
+s=main_source(r);a=s.index('static int vm_find_event_at(');b=s.index('static int vm_event_blocks_except(',a)
 pre=r'''#include <stdint.h>
 #include <assert.h>
 #include "runtime/player_forms.h"

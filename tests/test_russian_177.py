@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 """Test the actual C lookup against every known original/ported text, and legacy assets."""
 import hashlib,json,struct,subprocess,sys,tempfile
 from pathlib import Path
@@ -61,6 +64,6 @@ for f in (base/'assets').glob('*_vm.bin'):assert (r/'assets'/f.name).read_bytes(
 for v in table.values():
  for c in v:assert c in '\r\n\t' or ord(c)in new,(repr(c),v)
 assert table['greenkey']=='Зелёный ключ' and table['redkey']=='Красный ключ'
-s=(r/'main.c').read_text();assert 'if (b[4] <= 4)'in s and 'const char *langs[5]'in s
+s=main_source(r);assert 'if (b[4] <= 4)'in s and 'const char *langs[5]'in s
 assert '(g_language + (delta > 0 ? 1 : 4)) % 5'in s
 print(f'PASS: {len(cases)} actual/original text and UI cases through C lookup; 1,834 translated fragments; all Cyrillic glyphs; four legacy languages/assets unchanged')

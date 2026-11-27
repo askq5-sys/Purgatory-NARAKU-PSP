@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile
 r=Path(__file__).resolve().parents[1]
-s=(r/'main.c').read_text();a=s.index('static void draw_runtime_message_overlay(void)');b=s.index('static void render_picture_frame(',a)
+s=main_source(r);a=s.index('static void draw_runtime_message_overlay(void)');b=s.index('static void render_picture_frame(',a)
 pre="""#include <assert.h>
 #include <stddef.h>
 #define MESSAGE_BOX_X 110

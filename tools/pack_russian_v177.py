@@ -1,3 +1,6 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'tests'))
+from source_util import main_source
 """Package Russian text and append Cyrillic glyphs without changing old glyphs."""
 import json,re,struct
 from pathlib import Path
@@ -23,7 +26,7 @@ def pack():
   ko=len(h)+len(blob);blob+=k.encode()+b'\0';vo=len(h)+len(blob);t=table[k].encode();blob+=t+b'\0';struct.pack_into('<III',h,8+i*12,ko,vo,len(t))
  (R/'assets/russian177.bin').write_bytes(h+blob)
  old=(R/'assets/font_map.bin').read_bytes();recs=[old[i:i+8]for i in range(12,len(old),8)];recs=[r for r in recs if r[4]!=7];have={struct.unpack_from('<I',r)[0]for r in recs}
- ui=(R/'main.c').read_text()
+ ui=main_source(R)
  chars={ord(c)for v in table.values()for c in v}|{ord(c)for c in ui if '\u0400'<=c<='\u052f'}
  missing=sorted(chars-have-{10,13,9});print('Additional glyphs',len(missing))
  assert len(missing)<=21*18
