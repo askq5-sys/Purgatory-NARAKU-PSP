@@ -2,7 +2,7 @@
 
 An unofficial PSP homebrew port of Purgatory -NARAKU-.
 
-## Current version: 1.7.12
+## Current version: 1.7.13
 
 The port implements Enri's and Will's stories, the ending routes,
 secret-route events, and bonus areas. The developer has completed
@@ -24,6 +24,13 @@ as a guarantee that every branch is free of bugs.
 - Save-file deletion with confirmation in all five languages.
 - Settings values aligned to a shared right edge.
 - Compressed market build for smaller texture and audio assets.
+
+## Changes in 1.7.13
+
+- Fixed outdated English text in a few scenes (green key, Cleaver/Axe
+  choice, broken lines); the Map055 levers use their original sounds.
+- Gray-tinted scenes take less time per frame.
+- The `assets` folder is about 200 MB smaller; unused code was removed.
 
 ## Changes in 1.7.12
 
