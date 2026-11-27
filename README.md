@@ -81,8 +81,9 @@ Build and install into an existing game folder (PPSSPP by default):
 
 Assets from `tools/assets_patch.txt` are copied from the local `assets/`
 folder when present; otherwise the copies already installed in the game
-folder are kept. To apply the doorway shading fix to the installed maps,
-point the script at the PC game's `data` folder:
+folder are kept. To apply the doorway shading fix to the installed maps and
+refresh outdated script text (`tools/refresh_vm_text.py`), point the script
+at the PC game's `data` folder:
 
 ```bash
 NARAKU_ORIGINAL_DATA=/path/to/pc-game/data ./tools/build_deploy.sh
@@ -104,6 +105,14 @@ atlases, character atlases, A1 veil, fog and parallax in the GE block
 ("swizzled") layout, which the PSP samples faster. The pictures on screen are
 identical; a wrong layout would show as scrambled textures, also in PPSSPP.
 Off by default until it is measured on hardware.
+
+The market folder only gets the files the EBOOT loads. Game folders updated
+from older releases still hold about 200 MB of such leftovers (pre-rendered
+dialog pages, the old opening); list them, or move them out, with
+
+```bash
+python3 tools/runtime_assets.py GAME_DIR/assets [--move-to DIR]
+```
 
 Both scripts stop if the EBOOT imports PSP kernel libraries
 (`tools/check_eboot_imports.py`): such an EBOOT runs in PPSSPP but shows a
@@ -128,6 +137,8 @@ Select Russian through Settings → Language → Русский.
 | `tools/assets_patch.txt` | Assets copied by `build_deploy.sh` |
 | `tools/prepare_*.py`, `tools/verify_*.py` | Conversion of the PC game data |
 | `tools/fix_doorway_gradient_priority.py` | Doorway shading fix for converted maps |
+| `tools/refresh_vm_text.py` | Updates outdated text in installed map scripts |
+| `tools/runtime_assets.py` | Lists asset files the EBOOT never loads |
 | `tests/` | Quick checks (`run_host_checks.sh`) and full checks with game data (`run_all_checks.sh`), see `tests/README.md` |
 | `tools/prepare_test_data.py` | Converter manifests needed by the full checks |
 | `docs/releases/` | Release notes |

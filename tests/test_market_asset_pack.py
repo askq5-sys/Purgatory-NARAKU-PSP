@@ -17,17 +17,17 @@ class MarketAssetPackTests(unittest.TestCase):
             source.mkdir()
             texture = bytes(range(256)) * 64
             audio = b"\0\0\x11\0" * 10000
-            (source / "map001.rgba8888").write_bytes(texture)
-            (source / "bgm.pcm").write_bytes(audio)
+            (source / "map001_atlas0.rgba8888").write_bytes(texture)
+            (source / "bgm_low.pcm").write_bytes(audio)
             (source / "map001.bin").write_bytes(b"vm data")
 
             count, _, _ = pack_assets(source, dest)
             self.assertEqual(count, 2)
-            self.assertEqual(zlib.decompress((dest / "map001.rgba8888.z").read_bytes()), texture)
-            self.assertEqual(zlib.decompress((dest / "bgm.pcm.z").read_bytes()), audio)
+            self.assertEqual(zlib.decompress((dest / "map001_atlas0.rgba8888.z").read_bytes()), texture)
+            self.assertEqual(zlib.decompress((dest / "bgm_low.pcm.z").read_bytes()), audio)
             self.assertEqual((dest / "map001.bin").read_bytes(), b"vm data")
-            self.assertFalse((dest / "map001.rgba8888").exists())
-            self.assertTrue((source / "map001.rgba8888").is_file())
+            self.assertFalse((dest / "map001_atlas0.rgba8888").exists())
+            self.assertTrue((source / "map001_atlas0.rgba8888").is_file())
 
     def test_refuses_to_overwrite_existing_destination(self):
         with tempfile.TemporaryDirectory() as td:
@@ -47,10 +47,23 @@ class MarketAssetPackTests(unittest.TestCase):
             source, dest = root / "source", root / "packed"
             source.mkdir()
             raw = os.urandom(4096)
-            (source / "noise.pcm").write_bytes(raw)
+            (source / "se_exact_1000.pcm").write_bytes(raw)
             count, _, _ = pack_assets(source, dest)
             self.assertEqual(count, 0)
-            self.assertEqual((dest / "noise.pcm").read_bytes(), raw)
+            self.assertEqual((dest / "se_exact_1000.pcm").read_bytes(), raw)
+
+    def test_leaves_out_files_the_eboot_never_loads(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            source = root / "source"
+            source.mkdir()
+            for name in ("map001_vm.bin", "m001_e001_en.rgba8888", "opening1_en.rgba8888",
+                         "audio_exact_v079.json"):
+                (source / name).write_bytes(b"x")
+            pack_assets(source, root / "release")
+            self.assertEqual(sorted(p.name for p in (root / "release").iterdir()), ["map001_vm.bin"])
+            pack_assets(source, root / "everything", keep_unused=True)
+            self.assertEqual(len(list((root / "everything").iterdir())), 4)
 
 
 if __name__ == "__main__":

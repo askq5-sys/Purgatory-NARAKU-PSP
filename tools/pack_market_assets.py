@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import sys
 import zlib
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from runtime_assets import asset_pattern, is_runtime_asset
 
 COMPRESS_SUFFIXES = {".rgba8888", ".pcm"}
 
 
-def pack_assets(source: Path, destination: Path) -> tuple[int, int, int]:
+def pack_assets(source: Path, destination: Path, keep_unused: bool = False) -> tuple[int, int, int]:
     source = source.resolve()
     destination = destination.resolve()
     if not source.is_dir():
@@ -21,9 +25,14 @@ def pack_assets(source: Path, destination: Path) -> tuple[int, int, int]:
         raise FileExistsError(f"destination already exists: {destination}")
     destination.mkdir(parents=True)
 
+    # Leftovers the EBOOT never loads (old pre-rendered dialogs, the opening
+    # images, converter manifests) are left out of the release.
+    used = asset_pattern()
     packed_count = raw_total = packed_total = 0
     for src in sorted(source.rglob("*")):
         if not src.is_file():
+            continue
+        if not keep_unused and (src.parent != source or not is_runtime_asset(src.name, used)):
             continue
         dst = destination / src.relative_to(source)
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -47,8 +56,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="existing game assets directory")
     parser.add_argument("destination", type=Path, help="new compressed assets directory")
+    parser.add_argument("--keep-unused", action="store_true",
+                        help="also copy files the EBOOT never loads")
     args = parser.parse_args()
-    count, raw, packed = pack_assets(args.source, args.destination)
+    count, raw, packed = pack_assets(args.source, args.destination, args.keep_unused)
     percent = (100.0 * packed / raw) if raw else 100.0
     print(f"Compressed files: {count}")
     print(f"Asset bytes: {raw:,} -> {packed:,} ({percent:.1f}%)")
