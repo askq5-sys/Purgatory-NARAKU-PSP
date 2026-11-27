@@ -21,7 +21,9 @@ PSP_MODULE_INFO("NARAKU PSP", PSP_MODULE_USER, 1, 78);
 #include "runtime/player_animation.h"
 #include "runtime/render_boundaries.h"
 #include "runtime/tone_gray.h"
+#ifdef NARAKU_SWIZZLE_TEXTURES
 #include "runtime/texture_swizzle.h"
+#endif
 #include "runtime/pressing_room.h"
 PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 
@@ -164,7 +166,6 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 #define VM_OP_CHOICES_STYLE 45
 
 #define SCENE_ITEM 1
-#define SCENE_STATUS 2
 #define SCENE_SAVE 3
 #define SCENE_LOAD 4
 #define SCENE_OPTIONS 5
@@ -216,10 +217,8 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 #define MESSAGE_SURFACE_SCALE 2
 #define MESSAGE_SURFACE_Y (g_runtime_message_position==0?-38:g_runtime_message_position==1?39:144)
 #define MESSAGE_SURFACE_BYTES (MESSAGE_SURFACE_W * MESSAGE_SURFACE_H * 4)
-#define FALL_ATLAS_PATH ASSET_ROOT "fall_atlas.rgba8888"
 #define LUCAS_FALL_ATLAS_PATH ASSET_ROOT "lucas_fall_atlas.rgba8888"
 #define LUCAS_CORPSE_PATH ASSET_ROOT "lucas_corpse.rgba8888"
-#define PORTRAIT_PATH ASSET_ROOT "enri_portrait.rgba8888"
 #define SE_BONE_PATH ASSET_ROOT "se_bonecrush4.pcm"
 #define SE_WATER_PATH ASSET_ROOT "se_water.pcm"
 #define SE_WATER_70_80_PATH ASSET_ROOT "se_water_70_80.pcm"
@@ -503,7 +502,6 @@ static int g_screen_flash_remaining = 0;
 #include "runtime/world_frame.inc"
 #include "runtime/vm_text.inc"
 #include "runtime/vm_interpreter.inc"
-#include "runtime/intro.inc"
 #include "runtime/messages.inc"
 
 /* ------------------------------------------------------------------------- */

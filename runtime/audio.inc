@@ -257,7 +257,3 @@ static void play_vm_se_params(int se_id, int volume, int pitch, int pan)
     else if (se_id == 28) play_se_async(SE_HATCH_SLIDE_PATH);
 }
 
-static void play_vm_se(int se_id)
-{
-    play_vm_se_params(se_id, 90, 100, 0);
-}

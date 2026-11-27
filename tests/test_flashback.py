@@ -4,7 +4,7 @@ from source_util import main_source
 from pathlib import Path
 import subprocess,tempfile,json
 root=Path(__file__).resolve().parents[1]
-s=main_source(root);a=s.index('static int vm_cell_owns_transfer(');b=s.index('static int vm_touch_transfer_at',a)
+s=main_source(root);a=s.index('static int vm_cell_owns_transfer(');b=s.index('\n}\n',a)+3
 pre='''#include <assert.h>
 #include "runtime/player_animation.h"
 typedef struct {int vm_bin,vm_event_count;} MapState;

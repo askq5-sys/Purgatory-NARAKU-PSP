@@ -157,7 +157,6 @@ Tests read the combined source through `tests/source_util.py`.
 | `world_frame.inc` | Picture animation, special rooms, frame rendering |
 | `vm_text.inc` | Script VM: flashes, tints, messages, choices |
 | `vm_interpreter.inc` | Script VM: commands, move routes, transfers |
-| `intro.inc` | Opening, Map001 intro |
 | `messages.inc` | Runtime messages, screen fades |
 
 Per-version deploy scripts and asset lists up to 1.7.8 were removed from the

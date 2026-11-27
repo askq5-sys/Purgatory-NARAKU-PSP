@@ -200,21 +200,3 @@ static int vm_cell_owns_transfer(const MapState *m, int x, int y)
     return 0;
 }
 
-static int vm_touch_transfer_at(const MapState *m, int x, int y)
-{
-    int i;
-    VmEventRecord ev;
-    VmPageRecord pg;
-    if (!m->vm_bin) return transfer_index_at(m, x, y) != 0;
-    for (i = 0; i < m->vm_event_count; ++i) {
-        if (!vm_read_event(m, i, &ev)) continue;
-        {
-            int cell_x,cell_y;
-            vm_event_contact_cell(m,&ev,&cell_x,&cell_y);
-            if(cell_x!=x || cell_y!=y) continue;
-        }
-        if (!vm_active_page(m, &ev, &pg)) continue;
-        if (pg.trigger == 1 && (pg.flags & 0x02)) return 1;
-    }
-    return !vm_cell_owns_transfer(m, x, y) && transfer_index_at(m, x, y) != 0;
-}

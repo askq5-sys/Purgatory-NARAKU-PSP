@@ -72,12 +72,6 @@ static void reset_runtime_game_state(void)
     g_loaded_from_scene = 0;
 }
 
-static void clear_progress(void)
-{
-    remove(PROGRESS_PATH);
-    reset_runtime_game_state();
-}
-
 static int read_progress_file(const char *path, ProgressState *out)
 {
     FILE *f;
@@ -209,17 +203,6 @@ static int write_progress_file(
     }
     fclose(f);
     return 1;
-}
-
-static int load_progress(ProgressState *out)
-{
-    return read_progress_file(PROGRESS_PATH, out);
-}
-
-static void save_progress(
-    int map_id, int tile_x, int tile_y, int direction_row, int intro_done)
-{
-    write_progress_file(PROGRESS_PATH, map_id, tile_x, tile_y, direction_row, intro_done);
 }
 
 static void save_slot_path(int slot, char *path, size_t path_size)

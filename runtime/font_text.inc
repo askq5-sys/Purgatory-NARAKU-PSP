@@ -121,11 +121,6 @@ static void bind_font_page_color(int page, int r, int g, int b)
     sceGuTexFilter(GU_NEAREST, GU_NEAREST);
 }
 
-static void bind_font_page(int page)
-{
-    bind_font_page_color(page, 255, 255, 255);
-}
-
 static float draw_glyph_cp_color(uint32_t cp, float x, float y, int r, int g, int b)
 {
     const uint8_t *rec = font_find_glyph(cp);
@@ -161,11 +156,6 @@ static float draw_glyph_cp_color(uint32_t cp, float x, float y, int r, int g, in
     sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGBA);
     sceGuTexFilter(GU_NEAREST, GU_NEAREST);
     return adv * 0.75f;
-}
-
-static int draw_glyph_cp(uint32_t cp, float x, float y)
-{
-    return draw_glyph_cp_color(cp, x, y, 255, 255, 255);
 }
 
 static int parse_text_color_escape(const char **pp, const char *end, int *out_index)
@@ -396,7 +386,6 @@ static int runtime_speaker_width(void)
 
 static void rebuild_runtime_message_surface(void)
 {
-    const int top = MESSAGE_BOX_Y;
     if (!g_runtime_message_surface) {
         g_runtime_message_surface = (uint32_t *)memalign(16, MESSAGE_SURFACE_BYTES);
         if (!g_runtime_message_surface) {
@@ -665,32 +654,3 @@ static void draw_runtime_message_overlay(void)
 
 }
 
-static void render_picture_frame(void *texture, int alpha)
-{
-    sceGuStart(GU_DIRECT, gu_list);
-    sceGuClearColor(0xFF000000);
-    sceGuClear(GU_COLOR_BUFFER_BIT);
-    draw_texture_alpha(
-        texture, PIC_TEX_W, PIC_TEX_H,
-        (float)SCREEN_W, (float)SCREEN_H,
-        0.0f, 0.0f, (float)SCREEN_W, (float)SCREEN_H, alpha
-    );
-    sceGuFinish();
-    sceGuSync(0, 0);
-    sceDisplayWaitVblankStart();
-    g_draw_buffer = sceGuSwapBuffers();
-}
-
-static void fade_picture(void *texture, int from, int to, int frames)
-{
-    int i;
-    if (frames <= 0) {
-        render_picture_frame(texture, to);
-        return;
-    }
-    for (i = 0; i < frames; ++i) {
-        int a = from + (to - from) * i / frames;
-        render_picture_frame(texture, a);
-    }
-    render_picture_frame(texture, to);
-}

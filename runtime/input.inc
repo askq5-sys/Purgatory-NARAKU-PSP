@@ -5,21 +5,6 @@
 /* Input / language                                                          */
 /* ------------------------------------------------------------------------- */
 
-static void wait_cross(void)
-{
-    SceCtrlData pad;
-    uint32_t prev;
-    sceCtrlPeekBufferPositive(&pad, 1);
-    prev = pad.Buttons;
-
-    while (1) {
-        sceCtrlPeekBufferPositive(&pad, 1);
-        if ((pad.Buttons & ~prev) & PSP_CTRL_CROSS) return;
-        prev = pad.Buttons;
-        sceDisplayWaitVblankStart();
-    }
-}
-
 /* PPSSPP can report no buttons during the very first frame after launch.
  * Sample a short startup window so SELECT/TRIANGLE are reliable. */
 static uint32_t read_boot_hotkeys(void)
