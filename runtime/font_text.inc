@@ -185,6 +185,79 @@ static int parse_text_color_escape(const char **pp, const char *end, int *out_in
  * clears those instead of the whole 512 KB surface. */
 static int g_runtime_message_dirty_y0 = 0, g_runtime_message_dirty_y1 = MESSAGE_SURFACE_H - 1;
 
+/* Coverage (alpha) of one glyph at one message scale, kept in a small
+ * direct-mapped cache: message text repeats the same letters, so most
+ * glyphs are only copied. 256 entries of at most 64x64 bytes. */
+typedef struct {
+    int page, slot, adv, w, h;
+    float scale;
+    uint8_t *alpha;
+} GlyphCoverage;
+#define GLYPH_COVERAGE_SLOTS 256
+static GlyphCoverage g_glyph_coverage[GLYPH_COVERAGE_SLOTS];
+
+static const GlyphCoverage *glyph_coverage(int page, int slot, int sx, int sy, int adv,
+                                           const uint8_t *page_data, float scale)
+{
+    enum { MAXW = 64 };
+    unsigned h_index = ((unsigned)page * 977u + (unsigned)slot * 31u + (unsigned)adv +
+                        (scale > 1.25f ? 128u : 0u)) % GLYPH_COVERAGE_SLOTS;
+    GlyphCoverage *c = &g_glyph_coverage[h_index];
+    int w = (int)(adv * scale), h = (int)(FONT_CELL_H * scale);
+    int six[MAXW][2], siy[MAXW][2];
+    float wx1[MAXW][2], wx0[MAXW][2], wy1[MAXW][2], wy0[MAXW][2];
+    int x, y, q;
+    if (c->alpha && c->page == page && c->slot == slot && c->adv == adv && c->scale == scale)
+        return c;
+    if (w > MAXW) w = MAXW;
+    if (h > MAXW) h = MAXW;
+    if (w < 0) w = 0;
+    free(c->alpha);
+    c->alpha = (uint8_t *)malloc((size_t)(w * h > 0 ? w * h : 1));
+    if (!c->alpha) return NULL;
+    c->page = page; c->slot = slot; c->adv = adv; c->scale = scale; c->w = w; c->h = h;
+    /* Sample positions and weights depend only on the column or row and the
+     * scale; the float expressions are the original per-pixel ones. */
+    for (x = 0; x < w; ++x)
+        for (q = 0; q < 2; ++q) {
+            float f = (x + 0.25f + q * 0.5f) / scale - 0.5f;
+            int i = (int)f;
+            if (f < i) --i;
+            six[x][q] = i; wx1[x][q] = f - i; wx0[x][q] = 1.0f - (f - i);
+        }
+    for (y = 0; y < h; ++y)
+        for (q = 0; q < 2; ++q) {
+            float f = (y + 0.25f + q * 0.5f) / scale - 0.5f;
+            int i = (int)f;
+            if (f < i) --i;
+            siy[y][q] = i; wy1[y][q] = f - i; wy0[y][q] = 1.0f - (f - i);
+        }
+    for (y = 0; y < h; ++y)
+        for (x = 0; x < w; ++x) {
+            float alpha = 0.0f;
+            int qx, qy, dx, dy;
+            for (qy = 0; qy < 2; ++qy)
+                for (qx = 0; qx < 2; ++qx) {
+                    int ix = six[x][qx], iy = siy[y][qy];
+                    for (dy = 0; dy < 2; ++dy) {
+                        int sample_y = iy + dy;
+                        const uint8_t *src;
+                        float fy = dy ? wy1[y][qy] : wy0[y][qy];
+                        if (sample_y < 0 || sample_y >= FONT_CELL_H) continue;
+                        src = page_data + (sy + sample_y) * FONT_TEX_W + sx;
+                        for (dx = 0; dx < 2; ++dx) {
+                            int sample_x = ix + dx;
+                            if (sample_x >= 0 && sample_x < adv)
+                                alpha += 0.25f * src[sample_x] *
+                                    (dx ? wx1[x][qx] : wx0[x][qx]) * fy;
+                        }
+                    }
+                }
+            c->alpha[y * w + x] = (uint8_t)(alpha + 0.5f);
+        }
+    return c;
+}
+
 static void rasterize_glyph_to_message_surface(
     uint32_t cp, int dst_x, int dst_y, int color_index, float scale)
 {
@@ -220,62 +293,23 @@ static void rasterize_glyph_to_message_surface(
      * linearly filtered menu font. Keep the cached RGBA surface so inline
      * colours remain deterministic and no per-frame glyph work is added.
      * Four subpixel samples per pixel, each a bilinear tap, preserve thin
-     * stems when reducing. The sample positions and weights depend only on
-     * x (or y) and the scale, so they are computed once per glyph with the
-     * same float expressions as before: the result is identical. */
+     * stems when reducing. A glyph's coverage depends only on the glyph and
+     * the scale, so it is computed once (glyph_coverage) and reused. */
     {
-        enum { MAXW = 64 };
-        int w = (int)(adv * scale), h = (int)(FONT_CELL_H * scale);
-        int six[MAXW][2], siy[MAXW][2];
-        float wx1[MAXW][2], wx0[MAXW][2], wy1[MAXW][2], wy0[MAXW][2];
-        int q;
-        if (w > MAXW) w = MAXW;
-        if (h > MAXW) h = MAXW;
-        for (x = 0; x < w; ++x)
-            for (q = 0; q < 2; ++q) {
-                float f = (x + 0.25f + q * 0.5f) / scale - 0.5f;
-                int i = (int)f;
-                if (f < i) --i;
-                six[x][q] = i; wx1[x][q] = f - i; wx0[x][q] = 1.0f - (f - i);
-            }
-        for (y = 0; y < h; ++y)
-            for (q = 0; q < 2; ++q) {
-                float f = (y + 0.25f + q * 0.5f) / scale - 0.5f;
-                int i = (int)f;
-                if (f < i) --i;
-                siy[y][q] = i; wy1[y][q] = f - i; wy0[y][q] = 1.0f - (f - i);
-            }
+        const GlyphCoverage *cov = glyph_coverage(page, slot, sx, sy, adv, page_data, scale);
+        int w, h;
+        if (!cov) return;
+        w = cov->w; h = cov->h;
         for (y = 0; y < h; ++y) {
             int py = dst_y + y;
             uint32_t *row;
+            const uint8_t *alpha_row = cov->alpha + y * w;
             if (py < 0 || py >= MESSAGE_SURFACE_H) continue;
             row = g_runtime_message_surface + py * MESSAGE_SURFACE_W;
             for (x = 0; x < w; ++x) {
                 int px = dst_x + x;
-                float alpha = 0.0f;
-                int qx, qy, dx, dy;
-                uint8_t a;
-                if (px < 0 || px >= MESSAGE_SURFACE_W) continue;
-                for (qy = 0; qy < 2; ++qy) {
-                    for (qx = 0; qx < 2; ++qx) {
-                        int ix = six[x][qx], iy = siy[y][qy];
-                        for (dy = 0; dy < 2; ++dy) {
-                            int sample_y = iy + dy;
-                            const uint8_t *src;
-                            float fy = dy ? wy1[y][qy] : wy0[y][qy];
-                            if (sample_y < 0 || sample_y >= FONT_CELL_H) continue;
-                            src = page_data + (sy + sample_y) * FONT_TEX_W + sx;
-                            for (dx = 0; dx < 2; ++dx) {
-                                int sample_x = ix + dx;
-                                if (sample_x >= 0 && sample_x < adv)
-                                    alpha += 0.25f * src[sample_x] *
-                                        (dx ? wx1[x][qx] : wx0[x][qx]) * fy;
-                            }
-                        }
-                    }
-                }
-                a = (uint8_t)(alpha + 0.5f);
-                if (a == 0) continue;
+                uint8_t a = alpha_row[x];
+                if (a == 0 || px < 0 || px >= MESSAGE_SURFACE_W) continue;
                 row[px] = ((uint32_t)a << 24) | ((uint32_t)b << 16) |
                           ((uint32_t)g << 8) | (uint32_t)r;
                 if (py < g_runtime_message_dirty_y0) g_runtime_message_dirty_y0 = py;

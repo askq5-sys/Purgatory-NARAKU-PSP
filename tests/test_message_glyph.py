@@ -124,6 +124,8 @@ int main(void)
     for (int i = 0; i < 512*512; ++i) { seed = seed*1103515245u + 12345u; page[i] = (seed >> 16) & 255; if ((seed >> 8) & 3) page[i] = 0; }
     g_font.pages[0] = page; g_font.page_count = 1;
     for (int c = 0; c < 32; ++c) { g_text_palette[c][0] = c*7; g_text_palette[c][1] = 255-c; g_text_palette[c][2] = c*3; }
+    /* The second pass draws every glyph from the coverage cache. */
+    for (int pass = 0; pass < 2; ++pass)
     for (int slot = 0; slot < FONT_COLS*18; ++slot)
         for (int k = 0; k < 2; ++k) {
             int dx = 100 + (slot % 37) * 11 - 3, dy = -6 + (slot % 13) * 19;
@@ -151,5 +153,5 @@ with tempfile.TemporaryDirectory() as td:
         subprocess.run([str(exe)], check=True)
 assert 'memset(g_runtime_message_surface, 0, MESSAGE_SURFACE_BYTES)' not in src
 assert 'g_runtime_message_dirty_y0 = 0;' in src, 'a new surface is cleared whole once'
-print('PASS: message glyphs are identical to the original sampling at both scales; '
+print('PASS: message glyphs (computed and from the coverage cache) are identical to the original sampling at both scales; '
       'only rows holding text are cleared for the next message')
