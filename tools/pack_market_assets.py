@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from runtime_assets import asset_pattern, is_runtime_asset
 
+# .nau audio is already compressed and is only looked up without .z.
 COMPRESS_SUFFIXES = {".rgba8888", ".pcm"}
 
 
@@ -32,7 +33,7 @@ def pack_assets(source: Path, destination: Path, keep_unused: bool = False) -> t
     for src in sorted(source.rglob("*")):
         if not src.is_file():
             continue
-        if not keep_unused and (src.parent != source or not is_runtime_asset(src.name, used)):
+        if not keep_unused and (src.parent != source or not is_runtime_asset(src.name, used, source)):
             continue
         dst = destination / src.relative_to(source)
         dst.parent.mkdir(parents=True, exist_ok=True)

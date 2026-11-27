@@ -57,11 +57,7 @@ static int bgm_thread(SceSize args, void *argp)
         {
             size_t got = pcm_reader_read(&reader, buffer, AUDIO_BYTES);
             if (got < AUDIO_BYTES) {
-                if (reader.file && (feof(reader.file)
-#ifdef NARAKU_COMPRESSED_ASSETS
-                    || reader.ended
-#endif
-                    )) {
+                if (pcm_reader_finished(&reader)) {
                     size_t more = 0;
                     if (pcm_reader_rewind(&reader))
                         more = pcm_reader_read(&reader, (uint8_t *)buffer + got, AUDIO_BYTES - got);

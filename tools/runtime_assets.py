@@ -6,7 +6,8 @@ main.c and runtime/ that names a file, with printf fields (%03d, %d, %s)
 turned into wildcards. Compressed copies (NAME.z) count as NAME.
 
 Older builds left pre-rendered dialog pages, the hand-made opening and other
-leftovers in assets/; nothing loads them any more.
+leftovers in assets/; nothing loads them any more. Once the audio has been
+converted (tools/pack_audio.py), the original .pcm files are unused too.
 
 Usage:
   python3 tools/runtime_assets.py GAME/assets            list unused files
@@ -49,16 +50,23 @@ def asset_pattern(root: Path = ROOT) -> re.Pattern:
     return re.compile('^(?:%s)$' % '|'.join(sorted(map(_wildcard, names))))
 
 
-def is_runtime_asset(name: str, pattern: re.Pattern) -> bool:
+def is_runtime_asset(name: str, pattern: re.Pattern, folder: Path | None = None) -> bool:
+    """True if the EBOOT can load `name`. With `folder`, a NAME.pcm (or
+    NAME.pcm.z) whose NAME.nau is there counts as unused: the EBOOT plays the
+    .nau (tools/pack_audio.py) instead."""
     if name.endswith('.z'):
         name = name[:-2]
+    if name.endswith('.nau'):
+        return bool(pattern.match(name[:-4] + '.pcm'))
+    if folder is not None and name.endswith('.pcm') and (folder / (name[:-4] + '.nau')).is_file():
+        return False
     return bool(pattern.match(name))
 
 
 def unused_assets(assets: Path, pattern: re.Pattern | None = None) -> list[Path]:
     pattern = pattern or asset_pattern()
     return [p for p in sorted(assets.iterdir())
-            if p.is_file() and not is_runtime_asset(p.name, pattern)]
+            if p.is_file() and not is_runtime_asset(p.name, pattern, assets)]
 
 
 def main() -> int:

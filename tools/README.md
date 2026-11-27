@@ -21,10 +21,12 @@ Scripts that read the PC game take its folder (the one with `data/`, or
 | `refresh_vm_text.py` | Update outdated message text and sounds in installed map scripts |
 | `update_window_styles_v174.py` | Give messages and choices their original background and position |
 | `fix_doorway_gradient_priority.py` | Doorway shading fix for converted maps |
+| `pack_audio.py` | Compress the folder's audio losslessly (NAUD: prediction + Rice coding, mono, volume aliases), about 4.6x smaller |
 | `runtime_assets.py` | List or move asset files the EBOOT never loads |
 | `prepare_test_data.py` | Write the converter manifests the full test run reads |
 
-`build_deploy.sh` runs the first three when it finds the PC game data.
+`build_deploy.sh` runs the first three when it finds the PC game data, and
+`pack_audio.py` every time (converted sounds are skipped).
 
 ## Converting the PC game
 

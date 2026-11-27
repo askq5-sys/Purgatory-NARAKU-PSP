@@ -115,6 +115,13 @@ atlases, character atlases, A1 veil, fog and parallax in the GE block
 identical; a wrong layout would show as scrambled textures, also in PPSSPP.
 Off by default until it is measured on hardware.
 
+Audio is stored as NAUD files (`runtime/naraku_audio.h`), compressed without
+loss: each block is predicted from the previous samples and the prediction
+errors are Rice coded (as in FLAC), mono where both channels are equal, and
+quieter copies as a gain on the louder one. `build_deploy.sh` converts a game
+folder's `.pcm` audio (330 MB to 72 MB); the EBOOT still plays `.pcm` files
+that have no `.nau`.
+
 The market folder only gets the files the EBOOT loads. Game folders updated
 from older releases still hold about 200 MB of such leftovers (pre-rendered
 dialog pages, the old opening); list them, or move them out, with

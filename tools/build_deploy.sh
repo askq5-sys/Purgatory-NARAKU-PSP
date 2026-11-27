@@ -11,6 +11,9 @@
 # (tools/refresh_vm_text.py). It is looked up in $NARAKU_ORIGINAL_DATA,
 # original/data and original/www/data.
 #
+# Audio in the game folder is compressed losslessly (tools/pack_audio.py,
+# about 4.6x smaller); already converted sounds are skipped.
+#
 # Usage: tools/build_deploy.sh [GAME_DIR]
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,7 +24,8 @@ test -d "$DEST/assets" || { echo "Game folder has no assets/: $DEST" >&2; exit 1
 missing=0
 while IFS= read -r name; do
     test -n "$name" || continue
-    if [[ ! -s "$ROOT_DIR/assets/$name" && ! -s "$DEST/assets/$name" && ! -s "$DEST/assets/$name.z" ]]; then
+    if [[ ! -s "$ROOT_DIR/assets/$name" && ! -s "$DEST/assets/$name" && ! -s "$DEST/assets/$name.z" &&
+          ! ( "$name" == *.pcm && -s "$DEST/assets/${name%.pcm}.nau" ) ]]; then
         echo "Missing asset (not in assets/ nor in the game folder): $name" >&2
         missing=1
     fi
@@ -46,6 +50,8 @@ if [[ -d "$ROOT_DIR/assets" ]]; then
     while IFS= read -r name; do
         test -n "$name" || continue
         test -s "$ROOT_DIR/assets/$name" || continue
+        # Unchanged files keep their date, so converted audio is not redone.
+        cmp -s "$ROOT_DIR/assets/$name" "$DEST/assets/$name" && continue
         cp "$ROOT_DIR/assets/$name" "$DEST/assets/$name"
         rm -f "$DEST/assets/$name.z"
         copied=$((copied + 1))
@@ -70,6 +76,12 @@ if [[ -n "$original_data" ]]; then
     python3 "$ROOT_DIR/tools/refresh_vm_text.py" "$(dirname "$original_data")" "$DEST/assets"
 else
     echo "PC game data not found; doorway fix and script text refresh skipped (set NARAKU_ORIGINAL_DATA to its data folder)."
+fi
+
+if python3 -c "import numpy" 2>/dev/null; then
+    python3 "$ROOT_DIR/tools/pack_audio.py" "$DEST/assets"
+else
+    echo "numpy not installed; audio conversion skipped (pip install -r requirements.txt)."
 fi
 
 cp EBOOT.PBP "$DEST/EBOOT.PBP"

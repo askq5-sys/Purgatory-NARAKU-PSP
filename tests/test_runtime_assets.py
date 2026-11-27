@@ -18,4 +18,13 @@ for name in used:
     assert is_runtime_asset(name, pattern), name
 for name in unused:
     assert not is_runtime_asset(name, pattern), name
+import tempfile
+with tempfile.TemporaryDirectory() as td:
+    folder = Path(td)
+    for name in ('bgm_exact_1000.pcm', 'bgm_exact_1000.nau', 'se_ui_ok.pcm'):
+        (folder / name).write_bytes(b'x')
+    assert is_runtime_asset('bgm_exact_1000.nau', pattern, folder)
+    assert not is_runtime_asset('bgm_exact_1000.pcm', pattern, folder), 'replaced by its .nau'
+    assert is_runtime_asset('se_ui_ok.pcm', pattern, folder), 'no .nau: still played'
+    assert not is_runtime_asset('opening1_en.nau', pattern, folder)
 print('PASS: runtime asset names come from the source; legacy leftovers are unused')
