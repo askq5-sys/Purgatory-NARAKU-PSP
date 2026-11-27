@@ -73,6 +73,36 @@ static void *load_exact_file(const char *path, size_t expected_size)
     return data;
 }
 
+#ifdef NARAKU_SWIZZLE_TEXTURES
+/* Replace a freshly loaded plain texture with a swizzled copy. On any
+ * failure the plain texture is kept and drawn unswizzled. */
+static void *texture_swizzle_loaded(void *texture, int width, int height)
+{
+    uint32_t *out;
+    if (!texture || (width & 3) || (height & 7)) return texture;
+    out = (uint32_t *)memalign(16, (size_t)width * (size_t)height * 4u);
+    if (!out) return texture;
+    if (!texture_mark_swizzled(out)) { free(out); return texture; }
+    swizzle_8888(out, (const uint32_t *)texture, width, height);
+    free(texture);
+    sceKernelDcacheWritebackRange(out, (unsigned int)(width * height * 4));
+    return out;
+}
+
+static void texture_free(void *texture)
+{
+    texture_forget(texture);
+    free(texture);
+}
+#else
+static inline void *texture_swizzle_loaded(void *texture, int width, int height)
+{
+    (void)width; (void)height;
+    return texture;
+}
+#define texture_free free
+#endif
+
 /* Retain only the currently selected alternate leader (512 KiB).
  * Original Enri's atlas stays owned by main; no per-frame file reads. */
 static void *player_form_texture(void *normal)
@@ -82,13 +112,13 @@ static void *player_form_texture(void *normal)
     int actor=player_form_actor();
     char path[128];
     if(actor==1) {
-        if(alternate) {free(alternate);alternate=NULL;loaded_actor=0;}
+        if(alternate) {texture_free(alternate);alternate=NULL;loaded_actor=0;}
         return normal;
     }
     if(actor!=loaded_actor) {
-        free(alternate);alternate=NULL;
+        texture_free(alternate);alternate=NULL;
         snprintf(path,sizeof(path),ASSET_ROOT "actor%02d_atlas.rgba8888",actor);
-        alternate=load_exact_file(path,CHAR_ATLAS_BYTES);
+        alternate=texture_swizzle_loaded(load_exact_file(path,CHAR_ATLAS_BYTES),CHAR_ATLAS_W,CHAR_ATLAS_H);
         loaded_actor=actor;
     }
     return alternate ? alternate : normal;

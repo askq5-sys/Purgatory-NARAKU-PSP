@@ -10,13 +10,13 @@ static void free_map(MapState *m)
     int i;
     if (m->map_bin) free(m->map_bin);
     for (i = 0; i < MAX_TILE_ATLASES; ++i) {
-        if (m->tile_atlases[i]) free(m->tile_atlases[i]);
+        if (m->tile_atlases[i]) texture_free(m->tile_atlases[i]);
     }
     if (m->events_bin) free(m->events_bin);
-    if (m->event_atlas) free(m->event_atlas);
-    if (m->event_atlas_detail) free(m->event_atlas_detail);
+    if (m->event_atlas) texture_free(m->event_atlas);
+    if (m->event_atlas_detail) texture_free(m->event_atlas_detail);
     if (m->vm_bin) free(m->vm_bin);
-    free(m->parallax_texture);
+    texture_free(m->parallax_texture);
     memset(m, 0, sizeof(*m));
 }
 
@@ -72,7 +72,8 @@ static int load_map(MapState *m, int map_id)
                 ASSET_ROOT "map%03d_atlas%d.rgba8888",
                 map_id, atlas_index
             );
-            m->tile_atlases[atlas_index] = load_exact_file(path, TILE_ATLAS_BYTES);
+            m->tile_atlases[atlas_index] = texture_swizzle_loaded(
+                load_exact_file(path, TILE_ATLAS_BYTES), TILE_ATLAS_W, TILE_ATLAS_H);
             if (!m->tile_atlases[atlas_index]) goto fail;
         }
     }
@@ -107,7 +108,8 @@ static int load_map(MapState *m, int map_id)
 
     if (m->sprite_count > 0) {
         snprintf(path, sizeof(path), ASSET_ROOT "map%03d_event_atlas.rgba8888", map_id);
-        m->event_atlas = load_exact_file(path, EVENT_ATLAS_BYTES);
+        m->event_atlas = texture_swizzle_loaded(
+            load_exact_file(path, EVENT_ATLAS_BYTES), EVENT_ATLAS_W, EVENT_ATLAS_H);
         if (!m->event_atlas) goto fail;
         int need_detail=map_id==32 || map_id==39 || map_id==40 || map_id==47;
         {
@@ -116,13 +118,15 @@ static int load_map(MapState *m, int map_id)
         }
         if (need_detail) {
             snprintf(path,sizeof(path),ASSET_ROOT "map%03d_event_atlas1.rgba8888",map_id);
-            m->event_atlas_detail=load_exact_file(path,EVENT_ATLAS_BYTES);
+            m->event_atlas_detail=texture_swizzle_loaded(
+                load_exact_file(path,EVENT_ATLAS_BYTES),EVENT_ATLAS_W,EVENT_ATLAS_H);
             if(!m->event_atlas_detail)goto fail;
         }
     }
 
     if (map_id==54 || map_id==59 || map_id==61 || map_id==75) {
-        m->parallax_texture=load_exact_file(ASSET_ROOT "parallax_chain.rgba8888",EVENT_ATLAS_BYTES);
+        m->parallax_texture=texture_swizzle_loaded(
+            load_exact_file(ASSET_ROOT "parallax_chain.rgba8888",EVENT_ATLAS_BYTES),512,512);
         if (!m->parallax_texture) goto fail;
     }
 

@@ -669,7 +669,7 @@ static void draw_fog_a1_overlay(int effect_active)
     }
 
     u = g_fog_scroll;
-    sceGuTexMode(GU_PSM_8888, 0, 0, GU_FALSE);
+    sceGuTexMode(GU_PSM_8888, 0, 0, TEXTURE_SWIZZLE_FLAG(g_fog_overlay));
     sceGuTexImage(0, 512, 512, 512, g_fog_overlay);
     sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGBA);
     sceGuTexFilter(GU_LINEAR, GU_LINEAR);

@@ -99,6 +99,12 @@ shows FPS, the work time per frame (average and worst over one second; above
 16.7 ms the game drops below 60 FPS) and free memory. Without the option the
 EBOOT is unchanged.
 
+`-DNARAKU_SWIZZLE_TEXTURES=ON` stores the map tile atlases, event sprite
+atlases, character atlases, A1 veil, fog and parallax in the GE block
+("swizzled") layout, which the PSP samples faster. The pictures on screen are
+identical; a wrong layout would show as scrambled textures, also in PPSSPP.
+Off by default until it is measured on hardware.
+
 Both scripts stop if the EBOOT imports PSP kernel libraries
 (`tools/check_eboot_imports.py`): such an EBOOT runs in PPSSPP but shows a
 black screen on a real PSP.

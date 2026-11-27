@@ -29,9 +29,15 @@ static void init_gu(void)
     sceGuDisplay(GU_TRUE);
 }
 
+#ifdef NARAKU_SWIZZLE_TEXTURES
+#define TEXTURE_SWIZZLE_FLAG(texture) (texture_is_swizzled(texture) ? GU_TRUE : GU_FALSE)
+#else
+#define TEXTURE_SWIZZLE_FLAG(texture) GU_FALSE
+#endif
+
 static void bind_texture_8888(void *texture, int width, int height)
 {
-    sceGuTexMode(GU_PSM_8888, 0, 0, GU_FALSE);
+    sceGuTexMode(GU_PSM_8888, 0, 0, TEXTURE_SWIZZLE_FLAG(texture));
     sceGuTexImage(0, width, height, width, texture);
 }
 

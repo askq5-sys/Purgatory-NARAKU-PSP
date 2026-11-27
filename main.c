@@ -21,6 +21,7 @@ PSP_MODULE_INFO("NARAKU PSP", PSP_MODULE_USER, 1, 78);
 #include "runtime/player_animation.h"
 #include "runtime/render_boundaries.h"
 #include "runtime/tone_gray.h"
+#include "runtime/texture_swizzle.h"
 #include "runtime/pressing_room.h"
 PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 
@@ -573,17 +574,17 @@ int main(int argc, char *argv[])
     g_language = lang;
 
     boot_diag("06 loading Enri atlas");
-    char_atlas = load_exact_file(CHAR_ATLAS_PATH, CHAR_ATLAS_BYTES);
+    char_atlas = texture_swizzle_loaded(load_exact_file(CHAR_ATLAS_PATH, CHAR_ATLAS_BYTES), CHAR_ATLAS_W, CHAR_ATLAS_H);
     if (!char_atlas) fatal_error("Could not load enri_atlas.rgba8888");
     boot_diag("06a Enri atlas loaded");
     g_ui_char_atlas = char_atlas;
 
     boot_diag("07 loading A1 overlay");
-    g_a1_overlay = load_exact_file(A1_PATH, PIC_TEX_BYTES);
+    g_a1_overlay = texture_swizzle_loaded(load_exact_file(A1_PATH, PIC_TEX_BYTES), PIC_TEX_W, PIC_TEX_H);
     if (!g_a1_overlay) fatal_error("Could not load a1_overlay.rgba8888");
     boot_diag("07a A1 overlay loaded");
     boot_diag("08 loading fog overlay");
-    g_fog_overlay = load_exact_file(FOG_A1_PATH, FOG_A1_BYTES);
+    g_fog_overlay = texture_swizzle_loaded(load_exact_file(FOG_A1_PATH, FOG_A1_BYTES), 512, 512);
     if (!g_fog_overlay) fatal_error("Could not load fog_a1.rgba8888");
     boot_diag("08a fog overlay loaded");
     boot_diag("09 loading key animation");

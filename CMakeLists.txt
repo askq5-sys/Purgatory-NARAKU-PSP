@@ -5,6 +5,7 @@ project(naraku_psp C)
 option(NARAKU_COMPRESSED_ASSETS "Read DEFLATE-compressed texture/audio assets" OFF)
 option(NARAKU_BOOT_DIAGNOSTICS "Show and log PSP startup checkpoints" OFF)
 option(NARAKU_PERF_HUD "Show FPS, frame work time and free memory on screen" OFF)
+option(NARAKU_SWIZZLE_TEXTURES "Store large textures in the GE block layout" OFF)
 set(NARAKU_GAME_DIR "NARAKU" CACHE STRING "Folder name under ms0:/PSP/GAME/")
 
 add_executable(${PROJECT_NAME}
@@ -25,6 +26,10 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE NARAKU_GAME_DIR=\"${NARAKU_GA
 target_link_libraries(${PROJECT_NAME}
     pspdebug pspgu pspge pspdisplay pspctrl pspaudio psppower
 )
+
+if(NARAKU_SWIZZLE_TEXTURES)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NARAKU_SWIZZLE_TEXTURES=1)
+endif()
 
 if(NARAKU_PERF_HUD)
     target_compile_definitions(${PROJECT_NAME} PRIVATE NARAKU_PERF_HUD=1)
