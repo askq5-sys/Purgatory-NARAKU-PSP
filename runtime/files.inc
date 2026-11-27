@@ -15,6 +15,26 @@ static void fatal_error(const char *message)
     while (1) sceDisplayWaitVblankStart();
 }
 
+/* Large files are read in 64 KB pieces. The music thread reads its next
+ * buffer from the same memory stick; between pieces it gets the device
+ * within a few milliseconds instead of waiting for a whole 1 MB atlas,
+ * which made music stutter while a map loaded. */
+#define FILE_READ_CHUNK (64u * 1024u)
+
+static size_t read_chunked(void *dst, size_t size, FILE *f)
+{
+    size_t done = 0;
+    while (done < size) {
+        size_t want = size - done;
+        size_t got;
+        if (want > FILE_READ_CHUNK) want = FILE_READ_CHUNK;
+        got = fread((uint8_t *)dst + done, 1, want, f);
+        done += got;
+        if (got != want) break;
+    }
+    return done;
+}
+
 static void *load_exact_file(const char *path, size_t expected_size)
 {
 #ifdef NARAKU_COMPRESSED_ASSETS
@@ -34,7 +54,7 @@ static void *load_exact_file(const char *path, size_t expected_size)
                 compressed = (uint8_t *)malloc((size_t)compressed_len);
                 data = memalign(16, expected_size);
                 if (compressed && data &&
-                    fread(compressed, 1, (size_t)compressed_len, zf) == (size_t)compressed_len &&
+                    read_chunked(compressed, (size_t)compressed_len, zf) == (size_t)compressed_len &&
                     uncompress((Bytef *)data, &output_len, (const Bytef *)compressed,
                                (uLong)compressed_len) == Z_OK &&
                     output_len == (uLongf)expected_size)
@@ -60,7 +80,7 @@ static void *load_exact_file(const char *path, size_t expected_size)
         return NULL;
     }
 
-    size_t got = fread(data, 1, expected_size, f);
+    size_t got = read_chunked(data, expected_size, f);
     int extra = fgetc(f);
     fclose(f);
 
@@ -151,7 +171,7 @@ static void *load_whole_file(const char *path, size_t *out_size)
         return NULL;
     }
 
-    size_t got = fread(data, 1, (size_t)len, f);
+    size_t got = read_chunked(data, (size_t)len, f);
     fclose(f);
 
     if (got != (size_t)len) {

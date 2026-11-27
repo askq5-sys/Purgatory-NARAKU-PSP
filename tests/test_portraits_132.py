@@ -28,6 +28,7 @@ pre='''#include <stdint.h>
 #define SCREEN_W 480
 #define SCREEN_H 272
 #define GU_PSM_4444 1
+static size_t read_chunked(void*d,size_t n,FILE*f){return fread(d,1,n,f);}
 #define GU_FALSE 0
 #define GU_TFX_MODULATE 2
 #define GU_TFX_REPLACE 3

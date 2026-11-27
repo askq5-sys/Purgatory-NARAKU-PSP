@@ -599,7 +599,7 @@ static void picture_show(int number, int resource_id, int origin,
        read_u16_le(header+4)>512 || read_u16_le(header+6)>512) {fclose(fp);return;}
     data = memalign(16, 512 * 512 * 2);
     if (!data) { fclose(fp); return; }
-    if (fread(data,1,512*512*2,fp) != 512*512*2) {
+    if (read_chunked(data,512*512*2,fp) != 512*512*2) {
         free(data); fclose(fp);return;
     }
     fclose(fp);
