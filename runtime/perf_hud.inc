@@ -6,7 +6,8 @@
  * Above 16.7 ms the frame misses a vblank and the game drops below 60 FPS.
  * The second line shows the slowest music read in the last second and how
  * many reads since startup took longer than a buffer plays (audible gaps).
- * The map number helps to report where something happened.
+ * The map number helps to report where something happened; menus (title,
+ * inventory, save/load) count as their own frames and show "Menu".
  * "heap" is the memory malloc hands out now and the most it has taken from
  * the system so far (fragmentation included). The SDK reserves its heap from
  * all free memory at startup, so the kernel's free-memory count says nothing
@@ -39,11 +40,14 @@ static void perf_frame_done(int map_id)
     if (elapsed >= 1000000u) {
         unsigned int fps10 = (unsigned int)((unsigned long long)g_perf_frames * 10000000ull / elapsed);
         unsigned int avg = g_perf_work_sum / g_perf_frames;
+        char place[8];
         struct mallinfo mi = mallinfo();
+        if (map_id > 0) snprintf(place, sizeof(place), "Map%03d", map_id % 1000);
+        else memcpy(place, "Menu", 5);
         unsigned int heap = (unsigned int)mi.uordblks;
         if ((unsigned int)mi.arena > g_perf_heap_peak) g_perf_heap_peak = (unsigned int)mi.arena;
         g_perf_text_len = snprintf(g_perf_text, sizeof(g_perf_text),
-            "Map%03d FPS %u.%u work %u.%u/%u.%u ms heap %u/%u KB", map_id,
+            "%s FPS %u.%u work %u.%u/%u.%u ms heap %u/%u KB", place,
             fps10 / 10, fps10 % 10, avg / 1000, avg % 1000 / 100,
             g_perf_work_max / 1000, g_perf_work_max % 1000 / 100,
             heap / 1024, g_perf_heap_peak / 1024);

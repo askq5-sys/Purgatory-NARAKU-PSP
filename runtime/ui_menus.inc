@@ -145,9 +145,12 @@ static void ui_frame_begin(void)
 
 static void ui_frame_end(void)
 {
+    perf_hud_draw();
     sceGuFinish();
     sceGuSync(0, 0);
+    perf_frame_done(0);
     sceDisplayWaitVblankStart();
+    perf_after_vblank();
     g_draw_buffer = sceGuSwapBuffers();
 }
 
