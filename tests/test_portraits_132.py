@@ -59,7 +59,13 @@ static void draw_bound_rect(float x,float y,float w,float h,float xx,float yy,fl
 post='''int main(void){picture_show(8,18,0,0,0,100,100,255);PictureSlot*p=picture_slot(8);assert(p&&p->texture&&p->portrait&&p->w==408&&p->h==312&&!p->fit_screen);
 draw_vm_pictures(0,0);assert(filter==GU_LINEAR&&ux==1&&uy==1&&uw==p->source_w&&uh==p->source_h);assert(dx==36+p->picture_offset_x&&dy==-20+p->picture_offset_y&&dw==p->picture_region_w&&dh==p->picture_region_h);
 p->number=11;p->origin=1;p->scale_x=p->scale_y=50;draw_vm_pictures(0,0);assert(dw==p->picture_region_w*.5f&&dh==p->picture_region_h*.5f);assert(dx==36-102+p->picture_offset_x*.5f&&dy==-20-78+p->picture_offset_y*.5f);erase_picture_slot(11);
-picture_show(8,93,0,0,0,100,100,255);p=picture_slot(8);assert(p->texture&&!p->portrait&&p->fit_screen);draw_vm_pictures(0,0);assert(dx==0&&dy==0&&dw==480&&dh==272&&ux==0);erase_picture_slot(8);return 0;}'''
+picture_show(8,93,0,0,0,100,100,255);p=picture_slot(8);assert(p->texture&&!p->portrait&&p->fit_screen);draw_vm_pictures(0,0);assert(dx==0&&dy==0&&dw==480&&dh==272&&ux==0);erase_picture_slot(8);
+/* Shown again: the same texture comes back from the picture cache with the same geometry. */
+{void*t;float ox,oy,rw,rh;picture_show(8,18,0,0,0,100,100,255);p=picture_slot(8);t=p->texture;ox=p->picture_offset_x;oy=p->picture_offset_y;rw=p->picture_region_w;rh=p->picture_region_h;erase_picture_slot(8);
+picture_show(9,18,0,0,0,100,100,255);p=picture_slot(9);assert(p->texture==t&&p->portrait&&p->w==408&&p->h==312&&p->picture_offset_x==ox&&p->picture_offset_y==oy&&p->picture_region_w==rw&&p->picture_region_h==rh);
+picture_show(10,18,0,0,0,100,100,255);assert(picture_slot(10)->texture&&picture_slot(10)->texture!=t);
+erase_picture_slot(9);erase_picture_slot(10);picture_cache_clear();for(int i=0;i<PICTURE_CACHE_SLOTS;++i)assert(!g_picture_cache[i].texture);}
+return 0;}'''
 with tempfile.TemporaryDirectory()as td:
  p=Path(td)/'t.c';e=Path(td)/'t';p.write_text(pre+types+loader+drawing+post);subprocess.run(['cc','-std=c99',str(p),'-lm','-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 print(f'PASS: {len(rows)} portrait alpha crops/native texels/geometry; actual new/legacy picture loader, linear draw, origin/zoom and game-over fitting; fixed 512KiB texture memory')

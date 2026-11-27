@@ -20,6 +20,8 @@ static void free_map(MapState *m)
     memset(m, 0, sizeof(*m));
 }
 
+static void picture_cache_clear(void);
+
 static int load_map(MapState *m, int map_id)
 {
     char path[192];
@@ -30,6 +32,7 @@ static int load_map(MapState *m, int map_id)
     int i;
 
     free_map(m);
+    picture_cache_clear();
     clear_event_routes();
     g_balloon_frames = 0;
     clear_stage_parallel();

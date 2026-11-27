@@ -274,6 +274,9 @@ typedef struct {
     int source_w,source_h,portrait;
     float picture_offset_x,picture_offset_y,picture_region_w,picture_region_h;
     void *texture;
+    /* What picture_show read, so the texture can go to the picture cache. */
+    int cache_key;
+    unsigned char cache_header[8], cache_portrait[12];
 } PictureSlot;
 static PictureSlot g_pictures[MAX_ACTIVE_PICTURES];
 static volatile int g_audio_stop = 0;

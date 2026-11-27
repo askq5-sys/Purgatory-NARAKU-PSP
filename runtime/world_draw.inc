@@ -554,12 +554,71 @@ static PictureSlot *picture_slot(int number)
     return empty;
 }
 
+/* Pictures shown again (dialogue portraits, menu pages) come from memory
+ * instead of a 512 KB memory-stick read that held the frame for ~70 ms.
+ * The cache is small and emptied on every map load, so it adds at most
+ * PICTURE_CACHE_SLOTS x 512 KB to a map's memory use. */
+#define PICTURE_CACHE_SLOTS 4
+typedef struct {
+    int key;                      /* resource id, negative for the Russian controls page */
+    void *texture;
+    unsigned char header[8], portrait[12];
+    unsigned age;
+} PictureCacheEntry;
+static PictureCacheEntry g_picture_cache[PICTURE_CACHE_SLOTS];
+static unsigned g_picture_cache_clock;
+
+static void picture_cache_clear(void)
+{
+    int i;
+    for (i = 0; i < PICTURE_CACHE_SLOTS; ++i) {
+        free(g_picture_cache[i].texture);
+        memset(&g_picture_cache[i], 0, sizeof(g_picture_cache[i]));
+    }
+}
+
+static void picture_cache_put(const PictureSlot *slot)
+{
+    PictureCacheEntry *victim = &g_picture_cache[0];
+    int i;
+    for (i = 0; i < PICTURE_CACHE_SLOTS; ++i) {
+        PictureCacheEntry *e = &g_picture_cache[i];
+        if (!e->texture) { victim = e; break; }
+        if (e->age < victim->age) victim = e;
+    }
+    free(victim->texture);
+    victim->key = slot->cache_key;
+    victim->texture = slot->texture;
+    memcpy(victim->header, slot->cache_header, sizeof(victim->header));
+    memcpy(victim->portrait, slot->cache_portrait, sizeof(victim->portrait));
+    victim->age = ++g_picture_cache_clock;
+}
+
+static void *picture_cache_take(int key, unsigned char *header, unsigned char *portrait)
+{
+    int i;
+    for (i = 0; i < PICTURE_CACHE_SLOTS; ++i) {
+        PictureCacheEntry *e = &g_picture_cache[i];
+        if (e->texture && e->key == key) {
+            void *texture = e->texture;
+            memcpy(header, e->header, sizeof(e->header));
+            memcpy(portrait, e->portrait, sizeof(e->portrait));
+            memset(e, 0, sizeof(*e));
+            return texture;
+        }
+    }
+    return NULL;
+}
+
 static void erase_picture_slot(int number)
 {
     int i;
     for (i = 0; i < MAX_ACTIVE_PICTURES; ++i) {
         if (g_pictures[i].number != number) continue;
-        if (g_pictures[i].texture) free(g_pictures[i].texture);
+        if (g_pictures[i].texture) {
+            if (g_pictures[i].cache_key) picture_cache_put(&g_pictures[i]);
+            else free(g_pictures[i].texture);
+        }
         memset(&g_pictures[i], 0, sizeof(g_pictures[i]));
         return;
     }
@@ -570,7 +629,7 @@ static void picture_show(int number, int resource_id, int origin,
 {
     char path[180];
     unsigned char header[8],portrait_header[12];
-    int portrait=0;
+    int portrait=0, russian_controls, cache_key;
     FILE *fp;
     PictureSlot *slot;
     void *data;
@@ -584,26 +643,41 @@ static void picture_show(int number, int resource_id, int origin,
     if (number == 6) { g_picture6_visible = 0; g_picture6_alpha = 0; }
     slot = picture_slot(number);
     if (!slot) return; /* PSP-1000 memory cap: max five pictures */
-    snprintf(path, sizeof(path), ASSET_ROOT "pic_%03d.p44", resource_id);
-    if(g_language==4 && resource_id>=9 && resource_id<=12)
-        snprintf(path,sizeof(path),ASSET_ROOT "controls_ru177.p44");
-    fp = fopen(path,"rb");
-    if (!fp) return;
-    if (fread(header,1,8,fp) != 8 ||
-        (memcmp(header,"NP50",4) != 0 && memcmp(header,"NGO1",4) != 0 && memcmp(header,"NPR1",4) != 0)) {
-        fclose(fp);return;
+    russian_controls = g_language==4 && resource_id>=9 && resource_id<=12;
+    cache_key = russian_controls ? -resource_id : resource_id;
+    memset(portrait_header, 0, sizeof(portrait_header));
+    data = picture_cache_take(cache_key, header, portrait_header);
+    portrait = data && memcmp(header,"NPR1",4)==0;
+    if (!data) {
+        snprintf(path, sizeof(path), ASSET_ROOT "pic_%03d.p44", resource_id);
+        if (russian_controls)
+            snprintf(path,sizeof(path),ASSET_ROOT "controls_ru177.p44");
+        fp = fopen(path,"rb");
+        if (!fp) return;
+        if (fread(header,1,8,fp) != 8 ||
+            (memcmp(header,"NP50",4) != 0 && memcmp(header,"NGO1",4) != 0 && memcmp(header,"NPR1",4) != 0)) {
+            fclose(fp);return;
+        }
+        portrait=memcmp(header,"NPR1",4)==0;
+        if(portrait && fread(portrait_header,1,12,fp)!=12) {fclose(fp);return;}
+        if(read_u16_le(header+4)<1 || read_u16_le(header+6)<1 ||
+           read_u16_le(header+4)>512 || read_u16_le(header+6)>512) {fclose(fp);return;}
+        data = memalign(16, 512 * 512 * 2);
+        if (!data) {
+            /* Memory is short: give the cached pictures back first. */
+            picture_cache_clear();
+            data = memalign(16, 512 * 512 * 2);
+        }
+        if (!data) { fclose(fp); return; }
+        if (read_chunked(data,512*512*2,fp) != 512*512*2) {
+            free(data); fclose(fp);return;
+        }
+        fclose(fp);
+        sceKernelDcacheWritebackInvalidateAll();
     }
-    portrait=memcmp(header,"NPR1",4)==0;
-    if(portrait && fread(portrait_header,1,12,fp)!=12) {fclose(fp);return;}
-    if(read_u16_le(header+4)<1 || read_u16_le(header+6)<1 ||
-       read_u16_le(header+4)>512 || read_u16_le(header+6)>512) {fclose(fp);return;}
-    data = memalign(16, 512 * 512 * 2);
-    if (!data) { fclose(fp); return; }
-    if (read_chunked(data,512*512*2,fp) != 512*512*2) {
-        free(data); fclose(fp);return;
-    }
-    fclose(fp);
-    sceKernelDcacheWritebackInvalidateAll();
+    slot->cache_key = cache_key;
+    memcpy(slot->cache_header, header, sizeof(slot->cache_header));
+    memcpy(slot->cache_portrait, portrait_header, sizeof(slot->cache_portrait));
     slot->number = number; slot->resource_id = resource_id;
     slot->w = (int)read_u16_le(header+4);slot->h=(int)read_u16_le(header+6);
     slot->source_w=slot->w;slot->source_h=slot->h;slot->portrait=portrait;
