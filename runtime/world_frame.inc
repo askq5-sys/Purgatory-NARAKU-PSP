@@ -399,18 +399,19 @@ static void render_world(
      * The frame is read through the cached VRAM alias: uncached reads cost a
      * full bus transaction per pixel on hardware. Drop stale cache lines before
      * reading the GE output and write the result back before the GE resumes.
-     * Skipped when the tone turns every pixel black or white anyway. */
+     * Skipped when the tone turns every pixel black or white anyway. The
+ * per-level table and the reuse of equal neighbours keep it division-free. */
     if (g_world_tone_gray > 0 &&
         !tone_hides_gray(g_world_tone_r, g_world_tone_g, g_world_tone_b)) {
-        int x,y,gray=g_world_tone_gray > 255 ? 255 : g_world_tone_gray;
+        static ToneGrayTable table;
+        static int table_gray = -1;
+        int y,gray=g_world_tone_gray > 255 ? 255 : g_world_tone_gray;
         uint32_t *fb=(uint32_t *)(0x04000000u | (uintptr_t)g_draw_buffer);
         const unsigned int bytes=(unsigned int)(BUF_W*SCREEN_H*4);
+        if (table_gray != gray) { tone_gray_table(&table, gray); table_gray = gray; }
         sceGuFinish();sceGuSync(0,0);
         sceKernelDcacheWritebackInvalidateRange(fb,bytes);
-        for(y=0;y<SCREEN_H;++y) {
-            uint32_t *row=fb+y*BUF_W;
-            for(x=0;x<SCREEN_W;++x) row[x]=tone_gray_pixel(row[x],gray);
-        }
+        for(y=0;y<SCREEN_H;++y) tone_gray_row(fb+y*BUF_W,SCREEN_W,&table);
         sceKernelDcacheWritebackInvalidateRange(fb,bytes);
         sceGuStart(GU_DIRECT,gu_list);
         sceGuTexFlush();

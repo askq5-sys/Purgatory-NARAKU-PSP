@@ -44,6 +44,21 @@ int main(void)
             uint32_t p=c|((c*2654435761u)&0xFF000000u);
             assert(tone_gray_pixel(p,grays[k])==reference(p,grays[k]));
         }
+    /* The table version used per frame is exact for every level. */
+    static ToneGrayTable t;
+    for (int gray=0;gray<=255;++gray) {
+        tone_gray_table(&t,gray);
+        for (uint32_t c=0;c<0x1000000u;c+=(gray%8==0?1u:251u)) {
+            uint32_t p=c|((c*2654435761u)&0xFF000000u);
+            assert(tone_gray_pixel_table(p,&t)==reference(p,gray));
+        }
+        uint32_t row[480];
+        for (int x=0;x<480;++x) row[x]=(x/37)%3==0?0x00102030u:(uint32_t)(x*2654435761u);
+        uint32_t want[480];
+        for (int x=0;x<480;++x) want[x]=reference(row[x],gray);
+        tone_gray_row(row,480,&t);
+        for (int x=0;x<480;++x) assert(row[x]==want[x]);
+    }
     static const int hidden[][3]={{-255,-255,-255},{255,255,255},{-300,-255,-256},{256,300,255}};
     for (unsigned k=0;k<4;++k) {
         assert(tone_hides_gray(hidden[k][0],hidden[k][1],hidden[k][2]));
@@ -73,10 +88,10 @@ def test():
     block = block[:block.index('sceGuTexFlush();')]
     assert '0x04000000u' in block and '0x44000000u' not in block
     first = block.index('sceKernelDcacheWritebackInvalidateRange(fb,bytes);')
-    loop = block.index('tone_gray_pixel(')
+    loop = block.index('tone_gray_row(')
     last = block.rindex('sceKernelDcacheWritebackInvalidateRange(fb,bytes);')
     assert block.index('sceGuSync(0,0);') < first < loop < last
-    print('PASS: gray tone pixels match the original formula for all 16.7M colours at 8 levels; '
+    print('PASS: gray tone pixels (formula and per-frame table) match the original for all 16.7M colours; '
           'black/white tone skip leaves every pixel unchanged; cached VRAM access is flushed around the loop')
 
 
