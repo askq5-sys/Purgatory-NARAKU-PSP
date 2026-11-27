@@ -32,12 +32,12 @@ static int runtime_speaker_width(void){return 60;}
 static float runtime_name_y(void){return 180;}
 static int runtime_message_text_y(void){return 218;}
 static void draw_message_window_reveal(float x,float y,float w,float h,int a){frames++;}
-static void bind_texture_8888(){}
-static void sceGuTexFunc(){}
-static void sceGuTexFilter(){}
-static void sceGuColor(){}
-static void draw_bound_rect(){texts++;}
-static void draw_utf8_wrapped(){texts++;}
+static void bind_texture_8888(void*t,int w,int h){}
+static void sceGuTexFunc(int a,int b){}
+static void sceGuTexFilter(int a,int b){}
+static void sceGuColor(unsigned c){}
+static void draw_bound_rect(float sx,float sy,float sw,float sh,float dx,float dy,float dw,float dh){texts++;}
+static void draw_utf8_wrapped(const char*t,size_t n,float x,float y,float mx,int lines){texts++;}
 """
 post="""int main(void){
 g_runtime_message_transparent=1;draw_runtime_message_overlay();assert(frames==0&&texts==1);
