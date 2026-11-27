@@ -181,6 +181,10 @@ static int parse_text_color_escape(const char **pp, const char *end, int *out_in
 }
 
 
+/* Rows of the message surface that hold text, so the next message only
+ * clears those instead of the whole 512 KB surface. */
+static int g_runtime_message_dirty_y0 = 0, g_runtime_message_dirty_y1 = MESSAGE_SURFACE_H - 1;
+
 static void rasterize_glyph_to_message_surface(
     uint32_t cp, int dst_x, int dst_y, int color_index, float scale)
 {
@@ -214,47 +218,69 @@ static void rasterize_glyph_to_message_surface(
 
     /* Sample the source alpha at destination pixel centres, just like the
      * linearly filtered menu font. Keep the cached RGBA surface so inline
-     * colours remain deterministic and no per-frame glyph work is added. */
-    for (y = 0; y < (int)(FONT_CELL_H * scale); ++y) {
-        int py = dst_y + y;
-        float fy = (y + 0.5f) / scale - 0.5f;
-        int iy = (int)fy;
-        float wy = fy - iy;
-        if (py < 0 || py >= MESSAGE_SURFACE_H) continue;
-        for (x = 0; x < (int)(adv * scale); ++x) {
-            int px = dst_x + x;
-            float fx = (x + 0.5f) / scale - 0.5f;
-            int ix = (int)fx;
-            float wx = fx - ix;
-            float alpha = 0.0f;
-            int dx, dy, qx, qy;
-            uint8_t a;
-            if (px < 0 || px >= MESSAGE_SURFACE_W) continue;
-            /* Four subpixel samples preserve thin stems when reducing. */
-            for (qy = 0; qy < 2; ++qy) {
-                for (qx = 0; qx < 2; ++qx) {
-                    fx = (x + 0.25f + qx * 0.5f) / scale - 0.5f;
-                    fy = (y + 0.25f + qy * 0.5f) / scale - 0.5f;
-                    ix = (int)fx; iy = (int)fy;
-                    if (fx < ix) --ix;
-                    if (fy < iy) --iy;
-                    wx = fx - ix; wy = fy - iy;
-                    for (dy = 0; dy < 2; ++dy) {
-                        for (dx = 0; dx < 2; ++dx) {
-                            int sample_x = ix + dx, sample_y = iy + dy;
-                            if (sample_x >= 0 && sample_x < adv &&
-                                sample_y >= 0 && sample_y < FONT_CELL_H)
-                                alpha += 0.25f * page_data[(sy + sample_y) * FONT_TEX_W + sx + sample_x] *
-                                    (dx ? wx : 1.0f - wx) * (dy ? wy : 1.0f - wy);
+     * colours remain deterministic and no per-frame glyph work is added.
+     * Four subpixel samples per pixel, each a bilinear tap, preserve thin
+     * stems when reducing. The sample positions and weights depend only on
+     * x (or y) and the scale, so they are computed once per glyph with the
+     * same float expressions as before: the result is identical. */
+    {
+        enum { MAXW = 64 };
+        int w = (int)(adv * scale), h = (int)(FONT_CELL_H * scale);
+        int six[MAXW][2], siy[MAXW][2];
+        float wx1[MAXW][2], wx0[MAXW][2], wy1[MAXW][2], wy0[MAXW][2];
+        int q;
+        if (w > MAXW) w = MAXW;
+        if (h > MAXW) h = MAXW;
+        for (x = 0; x < w; ++x)
+            for (q = 0; q < 2; ++q) {
+                float f = (x + 0.25f + q * 0.5f) / scale - 0.5f;
+                int i = (int)f;
+                if (f < i) --i;
+                six[x][q] = i; wx1[x][q] = f - i; wx0[x][q] = 1.0f - (f - i);
+            }
+        for (y = 0; y < h; ++y)
+            for (q = 0; q < 2; ++q) {
+                float f = (y + 0.25f + q * 0.5f) / scale - 0.5f;
+                int i = (int)f;
+                if (f < i) --i;
+                siy[y][q] = i; wy1[y][q] = f - i; wy0[y][q] = 1.0f - (f - i);
+            }
+        for (y = 0; y < h; ++y) {
+            int py = dst_y + y;
+            uint32_t *row;
+            if (py < 0 || py >= MESSAGE_SURFACE_H) continue;
+            row = g_runtime_message_surface + py * MESSAGE_SURFACE_W;
+            for (x = 0; x < w; ++x) {
+                int px = dst_x + x;
+                float alpha = 0.0f;
+                int qx, qy, dx, dy;
+                uint8_t a;
+                if (px < 0 || px >= MESSAGE_SURFACE_W) continue;
+                for (qy = 0; qy < 2; ++qy) {
+                    for (qx = 0; qx < 2; ++qx) {
+                        int ix = six[x][qx], iy = siy[y][qy];
+                        for (dy = 0; dy < 2; ++dy) {
+                            int sample_y = iy + dy;
+                            const uint8_t *src;
+                            float fy = dy ? wy1[y][qy] : wy0[y][qy];
+                            if (sample_y < 0 || sample_y >= FONT_CELL_H) continue;
+                            src = page_data + (sy + sample_y) * FONT_TEX_W + sx;
+                            for (dx = 0; dx < 2; ++dx) {
+                                int sample_x = ix + dx;
+                                if (sample_x >= 0 && sample_x < adv)
+                                    alpha += 0.25f * src[sample_x] *
+                                        (dx ? wx1[x][qx] : wx0[x][qx]) * fy;
+                            }
                         }
                     }
                 }
+                a = (uint8_t)(alpha + 0.5f);
+                if (a == 0) continue;
+                row[px] = ((uint32_t)a << 24) | ((uint32_t)b << 16) |
+                          ((uint32_t)g << 8) | (uint32_t)r;
+                if (py < g_runtime_message_dirty_y0) g_runtime_message_dirty_y0 = py;
+                if (py > g_runtime_message_dirty_y1) g_runtime_message_dirty_y1 = py;
             }
-            a = (uint8_t)(alpha + 0.5f);
-            if (a == 0) continue;
-            g_runtime_message_surface[py * MESSAGE_SURFACE_W + px] =
-                ((uint32_t)a << 24) | ((uint32_t)b << 16) |
-                ((uint32_t)g << 8) | (uint32_t)r;
         }
     }
 }
@@ -392,9 +418,16 @@ static void rebuild_runtime_message_surface(void)
             g_runtime_message_surface_ready = 0;
             return;
         }
+        g_runtime_message_dirty_y0 = 0;
+        g_runtime_message_dirty_y1 = MESSAGE_SURFACE_H - 1;
     }
 
-    memset(g_runtime_message_surface, 0, MESSAGE_SURFACE_BYTES);
+    if (g_runtime_message_dirty_y0 <= g_runtime_message_dirty_y1)
+        memset(g_runtime_message_surface + g_runtime_message_dirty_y0 * MESSAGE_SURFACE_W, 0,
+               (size_t)(g_runtime_message_dirty_y1 - g_runtime_message_dirty_y0 + 1) *
+               MESSAGE_SURFACE_W * sizeof(uint32_t));
+    g_runtime_message_dirty_y0 = MESSAGE_SURFACE_H;
+    g_runtime_message_dirty_y1 = -1;
 
     if (g_runtime_speaker && g_runtime_speaker_len > 0) {
         rasterize_utf8_wrapped_to_message_surface(
