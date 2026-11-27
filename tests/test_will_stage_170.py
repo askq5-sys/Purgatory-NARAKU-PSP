@@ -1,7 +1,7 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from source_util import main_source, original_dir
-from vm_util import styled
+from vm_util import styled, use_exact_audio_ids
 """Audit original elevator/surface/Ending 2 resources and execute lift scheduler."""
 from pathlib import Path
 import ast,json,re,struct,subprocess,sys,tempfile
@@ -12,6 +12,7 @@ texts=w.read_json(G/'data/I18NTexts.json');key=bytes.fromhex(w.read_json(G/'data
 w.PICTURE_IDS=w.read_json(O/'picture_v050_manifest.json');audio=w.read_json(O/'audio_exact_v079.json')
 w.EXACT_SE_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='se'}
 w.EXACT_BGM_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='bgm'}
+use_exact_audio_ids(w,G)
 page_count=0
 for mid in (*range(79,105),*range(111,140)):
  data=w.adapt_stage_152(w.read_json(G/'data'/f'Map{mid:03}.json'),mid)

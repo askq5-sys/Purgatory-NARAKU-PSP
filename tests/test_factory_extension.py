@@ -3,7 +3,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from source_util import original_dir
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from vm_util import styled
+from vm_util import styled, use_exact_audio_ids
 """Audit compiled pages/resources and exercise the requested puzzle branches."""
 from pathlib import Path
 import json,struct,sys,re,collections
@@ -11,6 +11,7 @@ from PIL import Image
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
 G=original_dir(r);O=r/'assets';texts=json.load(open(G/'data/I18NTexts.json'));key=bytes.fromhex(json.load(open(G/'data/System.json'))['encryptionKey'])
 w.PICTURE_IDS=json.load(open(O/'picture_v050_manifest.json'));audio=json.load(open(O/'audio_exact_v079.json'));w.EXACT_SE_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='se'};w.EXACT_BGM_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='bgm'}
+use_exact_audio_ids(w,G)
 import zipfile
 report=[];pages={};sprites=0;frames=0
 for mid in range(36,46):
@@ -36,8 +37,9 @@ for mid in range(36,46):
      for di,d in enumerate(dirs):
       for pat in patterns:
        frame=w.extract_character_frame(src,name,img['characterIndex'],d,pat)
-       # S-003 is stored at native 72x144 and halved at draw time.
-       if name in('!クランク','!吊るしエンリ'):frame=frame.resize((frame.width*3//4,frame.height*3//4),Image.Resampling.LANCZOS)
+       # High-res maps keep native frames (halved at draw time); only the
+       # crank is stored at 3/4 size, as prepare_world_v060 does.
+       if name=='!クランク':frame=frame.resize((frame.width*3//4,frame.height*3//4),Image.Resampling.LANCZOS)
        assert frame.size==(sw,sh),(mid,eid,name,frame.size,(sw,sh))
        xx=sx;yy=sy
        if flags2&64:
@@ -62,6 +64,9 @@ def run(mid,eid,page,choice=0,items=None,switches=None,number=0):
  while p<len(b):
   op=b[p];p+=1
   if op==0:break
+  # 44/45 are message/choice windows with the original background and
+  # position bytes (tools/update_window_styles_v174.py).
+  if op in(44,45):p+=2;op=1 if op==44 else 22
   if op==1:
    lengths=read('<8H');p+=sum(lengths)
   elif op==2:

@@ -1,7 +1,7 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from source_util import main_source, original_dir
-from vm_util import styled
+from vm_util import data_pages, styled, use_exact_audio_ids
 from pathlib import Path
 import json, struct, sys, re, subprocess, tempfile
 from PIL import Image
@@ -12,6 +12,7 @@ texts=w.read_json(G/'data/I18NTexts.json');key=bytes.fromhex(w.read_json(G/'data
 w.PICTURE_IDS=w.read_json(O/'picture_v050_manifest.json');audio=w.read_json(O/'audio_exact_v079.json')
 w.EXACT_SE_IDS={w.audio_key(x):x['id'] for x in audio if x['kind']=='se'}
 w.EXACT_BGM_IDS={w.audio_key(x):x['id'] for x in audio if x['kind']=='bgm'}
+use_exact_audio_ids(w,G)
 pages=0;parallel_codes=set();route_count=0
 route_header=(r/'runtime/factory_routes.h').read_text()
 for mid in range(48,74):
@@ -23,8 +24,8 @@ for mid in range(48,74):
     eb=(O/f'map{mid:03}_events.bin').read_bytes();_,_,_,nt,ns,_=struct.unpack_from('<4s5H',eb);sb=14+mw*mh*5+nt*20
     for i in range(ne):
         eid,x,y,first,n,_=struct.unpack_from('<HHHHBB',b,20+i*10);event=data['events'][eid]
-        assert (x,y,n)==(event['x'],event['y'],len(event['pages']))
-        for j,page in enumerate(event['pages']):
+        assert (x,y,n)==(event['x'],event['y'],len(data_pages(mid,eid,event['pages'])))
+        for j,page in enumerate(data_pages(mid,eid,event['pages'])):
             pg=struct.unpack_from('<BBBBHHBBHII',b,base+(first+j)*20);ref,off,length=pg[8:]
             assert pg[7] and w.page_vm_supported(page)
             assert b[blob+off:blob+off+length]==styled(mid,eid,j,w.compile_vm_commands(page,texts,preserve_message_background=mid in (62,67,68,69,72)))
@@ -78,7 +79,8 @@ typedef struct{int cond_flags,trigger,priority,flags,switch1,switch2,self_index,
 static uint8_t g_switches[MAX_SWITCHES],g_self_switches[MAX_MAP_ID+1][MAX_EVENT_ID],g_event_erased[MAX_EVENT_ID];
 static struct{void*records;}g_routes[MAX_EVENT_ID];
 static int16_t g_items[MAX_ITEMS];
-static float g_screen_shake_x,g_stage_parallax_y;static int g_stage_parallax_scrolling,g_save_enabled,g_language,g_runtime_message_transparent,frame,beep_frame=-1;
+static float g_screen_shake_x,g_stage_parallax_y;static int g_stage_parallax_scrolling,g_save_enabled,g_language,g_runtime_message_transparent,g_runtime_message_background,g_runtime_message_position=2,frame,beep_frame=-1;
+static int vm_text_language(int lang){return lang==4?0:lang;}
 static uint16_t read_u16_le(const uint8_t*p){return p[0]|p[1]<<8;}
 static uint32_t read_u32_le(const uint8_t*p){return p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;}
 static void play_vm_se_params(int id,int v,int pitch,int pan){beep_frame=frame;}

@@ -3,13 +3,13 @@
 # PC version (data/, img/). The PC version is found in $NARAKU_ORIGINAL,
 # original/ inside the repository or original/ next to it.
 #
-# KNOWN_STALE lists tests that compare assets/ with what the current
-# converter produces. They fail until the map scripts are rebuilt (see
-# tests/README.md) and are reported separately instead of failing the run.
+# KNOWN_STALE lists tests expected to fail for a documented reason; they are
+# reported separately instead of failing the run. It is empty: refresh old
+# scripts with tools/refresh_vm_text.py (see tests/README.md).
 set -uo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
-KNOWN_STALE=" test_native_actors_139 test_stage_135 test_will_stage_170 test_factory_extension "
+KNOWN_STALE=" "
 
 original=""
 for dir in "${NARAKU_ORIGINAL:-}" "$ROOT_DIR/original" "$ROOT_DIR/../original"; do

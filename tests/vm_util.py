@@ -22,3 +22,26 @@ def styled(map_id, event_id, page_index, code):
     if meta is None or code == b'\0':
         return code
     return _styles.convert(code, meta.get(f'{event_id}:{page_index}', []))
+
+
+def use_exact_audio_ids(world, game):
+    """Number exact sounds as the converter does (all maps, not the manifest).
+
+    assets/audio_exact_v079.json only lists the PCM files that were converted;
+    the IDs themselves are assigned across every map and common event.
+    """
+    import refresh_vm_text
+    world.EXACT_SE_IDS, world.EXACT_BGM_IDS = refresh_vm_text.audio_ids(game)
+
+
+# Pages the converter adds that the installed scripts do not have. Map055
+# event 1 gained a fourth lever page (switch 632) in 1.4.2; the installed map
+# keeps three, which looks the same because switch 622 stays ON from then on.
+# Adding a page changes the event and sprite tables, so it needs a full map
+# rebuild rather than tools/refresh_vm_text.py.
+INSTALLED_PAGE_LIMIT = {(55, 1): 3}
+
+
+def data_pages(map_id, event_id, pages):
+    """The source pages that have an installed counterpart."""
+    return pages[:INSTALLED_PAGE_LIMIT.get((int(map_id), int(event_id)), len(pages))]

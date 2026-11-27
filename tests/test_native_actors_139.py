@@ -1,7 +1,7 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from source_util import main_source, original_dir
-from vm_util import styled
+from vm_util import data_pages, styled, use_exact_audio_ids
 """Verify native actor pixels and unchanged story scripts across supported maps."""
 from pathlib import Path
 import json, struct, sys, subprocess, tempfile
@@ -17,6 +17,7 @@ w.PICTURE_IDS = w.read_json(r / 'assets/picture_v050_manifest.json')
 audio = w.read_json(r / 'assets/audio_exact_v079.json')
 w.EXACT_SE_IDS = {w.audio_key(x): x['id'] for x in audio if x['kind'] == 'se'}
 w.EXACT_BGM_IDS = {w.audio_key(x): x['id'] for x in audio if x['kind'] == 'bgm'}
+use_exact_audio_ids(w, game)
 count = pages = 0
 cache = {}
 for mid in list(range(1,69))+[70]:
@@ -34,7 +35,7 @@ for mid in list(range(1,69))+[70]:
     atlases = {}
     for i in range(ne):
         eid, x, y, first, number, _ = struct.unpack_from('<HHHHBB', vb, 20 + i * 10)
-        for j, page in enumerate(data['events'][eid]['pages']):
+        for j, page in enumerate(data_pages(mid, eid, data['events'][eid]['pages'])):
             pg = struct.unpack_from('<BBBBHHBBHII', vb, pb + (first+j)*20)
             ref, off, size = pg[8:]
             assert vb[blob+off:blob+off+size] == (styled(mid,eid,j,w.compile_vm_commands(page, texts,preserve_message_background=mid in (62,67,68))) if pg[7] else bytes([0])), (mid,eid,j)

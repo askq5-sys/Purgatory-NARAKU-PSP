@@ -7,7 +7,8 @@
 # script stops.
 #
 # When the PC game's data folder is available, the doorway shading fix is
-# applied to the installed maps. It is looked up in $NARAKU_ORIGINAL_DATA,
+# applied to the installed maps and outdated script text is refreshed
+# (tools/refresh_vm_text.py). It is looked up in $NARAKU_ORIGINAL_DATA,
 # original/data and original/www/data.
 #
 # Usage: tools/build_deploy.sh [GAME_DIR]
@@ -61,8 +62,9 @@ for dir in "${NARAKU_ORIGINAL_DATA:-}" "$ROOT_DIR/original/data" "$ROOT_DIR/orig
 done
 if [[ -n "$original_data" ]]; then
     python3 "$ROOT_DIR/tools/fix_doorway_gradient_priority.py" "$original_data" "$DEST/assets"
+    python3 "$ROOT_DIR/tools/refresh_vm_text.py" "$(dirname "$original_data")" "$DEST/assets"
 else
-    echo "PC game data not found; doorway fix skipped (set NARAKU_ORIGINAL_DATA to its data folder)."
+    echo "PC game data not found; doorway fix and script text refresh skipped (set NARAKU_ORIGINAL_DATA to its data folder)."
 fi
 
 cp EBOOT.PBP "$DEST/EBOOT.PBP"

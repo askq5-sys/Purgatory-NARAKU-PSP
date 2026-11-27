@@ -39,21 +39,24 @@ map scripts compare against `vm_util.styled(...)`, which applies the window
 style step (`tools/update_window_styles_v174.py`) that installed scripts
 pass through.
 
-## Known stale scripts
+## Keeping installed scripts current
 
-`run_all_checks.sh` reports these tests as known stale instead of failing:
+`tools/refresh_vm_text.py ORIGINAL assets` recompiles every installed map and
+common event page and replaces the ones whose only differences are message or
+choice text, or a sound that now uses its exact volume/pitch variant;
+`tools/build_deploy.sh` runs it on the game folder. Jump targets are compared
+by command, so longer text is fine. `test_vm_text_current` checks that nothing
+is left to refresh.
 
-| Test | Why it fails |
-| --- | --- |
-| `test_native_actors_139` | 99 of ~3500 map script pages in `assets/` were compiled before later converter fixes |
-| `test_stage_135` | same, plus Map055 event 1 lacks the fourth "broken lever" page added in 1.4.2 |
-| `test_will_stage_170` | same |
-| `test_factory_extension` | same |
+Two pages stay as installed because their commands differ: the Map024 crusher
+loop (event 12, unsupported in the installed build) and Map055 event 1, which
+lacks the fourth lever page added in 1.4.2. The lever page has no visible
+effect: the lever's own scene leaves switch 622 on, which already shows the
+broken lever. Tests that walk source pages skip it through
+`vm_util.data_pages`.
 
-The converter fixes missing from the installed scripts are English text
-changes ("Obtained an Iron Key" → "Obtained a Green Key", the red
-\c[18]Cleaver highlight, collapsed spaces and line breaks) and the Map055
-lever page. The lever page has no visible effect: the lever's own scene
-leaves switch 622 on, which already shows the broken lever. These tests pass
-once the map scripts are rebuilt with the current converter; the Russian
-dictionary is keyed by the English text and has to be rebuilt with them.
+Exact sound IDs are numbered over every map (`vm_util.use_exact_audio_ids`);
+`assets/audio_exact_v079.json` lists only the converted PCM files. The Russian
+dictionary is keyed by the normalized English text, so refreshed pages keep
+their translations; `test_vm_text_current` and the refresh were checked
+against `russian177.bin` with no missing keys.
