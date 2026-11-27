@@ -118,6 +118,7 @@ static void vm_render_frame(
     int tile_x, int tile_y, int direction_row,
     int black_alpha, int red_alpha)
 {
+    picture_prefetch_tick();
     if (g_vm_position_owner==m && g_vm_tile_x && g_vm_tile_y && g_vm_direction) {
         tile_x=*g_vm_tile_x;tile_y=*g_vm_tile_y;direction_row=*g_vm_direction;
     }

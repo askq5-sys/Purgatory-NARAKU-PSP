@@ -76,7 +76,12 @@ erase_picture_slot(9);erase_picture_slot(10);picture_cache_clear();for(int i=0;i
 void*t=g_prefetch_texture;picture_show(12,18,0,0,0,100,100,255);assert(g_prefetch_state==PREFETCH_IDLE&&picture_slot(12)->texture==t&&picture_slot(12)->portrait);
 picture_prefetch(18);assert(threads_started==before+1);
 picture_prefetch(999);assert(g_prefetch_state==PREFETCH_FAILED||g_prefetch_state==PREFETCH_IDLE);picture_prefetch_collect(1);assert(g_prefetch_state==PREFETCH_IDLE&&!g_prefetch_texture);
-erase_picture_slot(12);picture_cache_clear();}
+erase_picture_slot(12);picture_cache_clear();
+/* Two upcoming pictures are read one after the other as frames tick. */
+before=threads_started;picture_prefetch_queue(18,93);assert(threads_started==before+1&&g_prefetch_key==18);
+picture_prefetch_tick();assert(threads_started==before+2&&g_prefetch_key==93&&picture_cache_has(18));
+picture_prefetch_tick();assert(picture_cache_has(93)&&threads_started==before+2);
+picture_cache_clear();assert(!picture_cache_has(18)&&!picture_cache_has(93)&&!g_prefetch_queue[0]&&!g_prefetch_queue[1]);}
 return 0;}'''
 with tempfile.TemporaryDirectory()as td:
  p=Path(td)/'t.c';e=Path(td)/'t';p.write_text(pre+types+loader+drawing+post);subprocess.run(['cc','-std=c99',str(p),'-lm','-o',str(e)],check=True);subprocess.run([str(e)],check=True)

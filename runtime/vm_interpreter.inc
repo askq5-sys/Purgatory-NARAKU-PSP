@@ -415,8 +415,12 @@ static int vm_execute_page(
                 q += sl[i] + ml[i];
             }
             p = q;
-            /* Read the next picture while the player reads this message. */
-            picture_prefetch(vm_scan_next_picture(base, pg->cmd_size, (size_t)(p - base), 64));
+            /* Read the next pictures while the player reads this message. */
+            {
+                int upcoming[2];
+                vm_scan_next_pictures(base, pg->cmd_size, (size_t)(p - base), 64, upcoming, 2);
+                picture_prefetch_queue(upcoming[0], upcoming[1]);
+            }
             vm_wait_text(
                 m, char_atlas, *tile_x, *tile_y, *direction_row,
                 speaker ? speaker : "", speaker_len,

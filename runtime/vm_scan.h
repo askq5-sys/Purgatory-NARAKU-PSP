@@ -83,21 +83,32 @@ static inline int vm_scan_op(const uint8_t *b, size_t size, size_t pos, size_t *
     return op;
 }
 
-/* Resource id of the first Show Picture at or after pos within `limit`
- * commands, or 0. Stops at the end of the page or an unknown command. */
-static inline int vm_scan_next_picture(const uint8_t *b, size_t size, size_t pos, int limit)
+/* Resource ids of the next Show Pictures at or after pos within `limit`
+ * commands: fills up to `count` ids (0 where there are fewer) and returns
+ * how many were found. Stops at the end of the page or an unknown command. */
+static inline int vm_scan_next_pictures(const uint8_t *b, size_t size, size_t pos, int limit,
+                                        int *ids, int count)
 {
-    while (limit-- > 0) {
+    int found = 0, i;
+    for (i = 0; i < count; ++i) ids[i] = 0;
+    while (limit-- > 0 && found < count) {
         size_t next;
         int op = vm_scan_op(b, size, pos, &next);
-        if (op <= 0) return 0;
+        if (op <= 0) break;
         if ((op == 25 || op == 32) && pos + 5 <= size) {
             int rid = (int)vm_scan_u16(b + pos + 3);
-            if (rid > 0) return rid;
+            if (rid > 0) ids[found++] = rid;
         }
         pos = next;
     }
-    return 0;
+    return found;
+}
+
+static inline int vm_scan_next_picture(const uint8_t *b, size_t size, size_t pos, int limit)
+{
+    int id;
+    vm_scan_next_pictures(b, size, pos, limit, &id, 1);
+    return id;
 }
 
 #endif

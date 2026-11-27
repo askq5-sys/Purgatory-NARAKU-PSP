@@ -579,6 +579,7 @@ static int g_prefetch_key;
 static void *g_prefetch_texture;
 static unsigned char g_prefetch_header[8], g_prefetch_portrait[12];
 static char g_prefetch_path[180];
+static int g_prefetch_queue[2];
 
 static int picture_header_ok(const unsigned char *header)
 {
@@ -627,6 +628,7 @@ static void picture_cache_clear(void)
 {
     int i;
     picture_prefetch_collect(1);
+    g_prefetch_queue[0] = g_prefetch_queue[1] = 0;
     for (i = 0; i < PICTURE_CACHE_SLOTS; ++i) {
         free(g_picture_cache[i].texture);
         memset(&g_picture_cache[i], 0, sizeof(g_picture_cache[i]));
@@ -691,6 +693,31 @@ static void picture_prefetch(int resource_id)
         g_prefetch_texture = NULL;
         g_prefetch_state = PREFETCH_IDLE;
     }
+}
+
+/* A message line often changes two portraits at once (speaker and
+ * listener), so up to two upcoming pictures are queued and read one after
+ * the other; picture_prefetch_tick() runs every frame while text waits. */
+static void picture_prefetch_tick(void)
+{
+    int i;
+    picture_prefetch_collect(0);
+    if (g_prefetch_state != PREFETCH_IDLE) return;
+    for (i = 0; i < 2; ++i) {
+        int rid = g_prefetch_queue[i];
+        g_prefetch_queue[i] = 0;
+        if (rid > 0 && !picture_cache_has(picture_cache_key(rid))) {
+            picture_prefetch(rid);
+            return;
+        }
+    }
+}
+
+static void picture_prefetch_queue(int first, int second)
+{
+    g_prefetch_queue[0] = first;
+    g_prefetch_queue[1] = second != first ? second : 0;
+    picture_prefetch_tick();
 }
 
 static void *picture_cache_take(int key, unsigned char *header, unsigned char *portrait)

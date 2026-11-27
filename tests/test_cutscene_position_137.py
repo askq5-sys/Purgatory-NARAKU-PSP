@@ -24,6 +24,7 @@ static int pass_mask_at(const MapState*m,int x,int y){return 15;}
 static int vm_event_blocks_at(const MapState*m,int x,int y){return 0;}
 static void play_vm_se_params(int a,int b,int c,int d){}
 static void tick_player_route(const MapState*m);
+static void picture_prefetch_tick(void){}
 static void render_world(const MapState*m,void*a,int v,float x,float y,int p,int d,int r,int z){int had=!!g_player_route.records;tick_player_route(m);if(had){x=g_route_real_x;y=g_route_real_y;}last_x=x;last_y=y;}
 static void vm_pump_stage_message(const MapState*m,void*a,int x,int y,int d){}
 '''

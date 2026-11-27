@@ -29,7 +29,9 @@ int main(void)
         if (fread(b, 1, size, stdin) != size) return 1;
         while (pos < size) {
             if (vm_scan_op(b, size, pos, &next) < 0) { printf("bad %zu\n", pos); break; }
-            printf("%zu %d\n", pos, vm_scan_next_picture(b, size, pos, 64));
+            int two[2];
+            vm_scan_next_pictures(b, size, pos, 64, two, 2);
+            printf("%zu %d %d %d\n", pos, vm_scan_next_picture(b, size, pos, 64), two[0], two[1]);
             pos = next;
         }
         printf("end\n");
@@ -64,16 +66,16 @@ def expected(code):
     records = S.decode(code)
     out = []
     for k, (a, _, _, _) in enumerate(records):
-        rid = 0
+        ids = []
         for a2, _, op, _ in records[k:k + 64]:
-            if op == 0:
+            if op == 0 or len(ids) == 2:
                 break
             if op in (25, 32):
                 r = struct.unpack_from('<H', code, a2 + 3)[0]
                 if r > 0:
-                    rid = r
-                    break
-        out.append(f'{a} {rid}')
+                    ids.append(r)
+        ids += [0, 0]
+        out.append(f'{a} {ids[0]} {ids[0]} {ids[1]}')
     return out + ['end']
 
 
