@@ -99,19 +99,6 @@ static void draw_character_frame(
     );
 }
 
-static void draw_fall_frame(int slot, float foot_x, float foot_y)
-{
-    int sx = slot * FALL_SLOT_W + 1;
-    foot_x = render_floor_pixel(foot_x);
-    foot_y = render_floor_pixel(foot_y);
-    draw_bound_rect(
-        (float)sx, 1.0f, (float)FALL_SRC_W, (float)FALL_SRC_H,
-        foot_x - FALL_DST_W * 0.5f,
-        foot_y - FALL_DST_H,
-        (float)FALL_DST_W, (float)FALL_DST_H
-    );
-}
-
 /* First and last tile index that can touch the screen along one axis.  The
  * range is one tile wider on each side; callers keep their exact checks. */
 static void visible_tile_range(float origin, float camera, int screen, int count,

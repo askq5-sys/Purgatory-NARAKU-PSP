@@ -112,95 +112,6 @@ static void draw_vm_pictures(int below_a1, int gallery)
 }
 
 
-static int lucas_fall_frame_from_switches(void)
-{
-    /* RPG Maker selects the last valid event page.  Event 45 uses switches
-     * 45..49 for the five visible frames; switch 50 makes it blank again. */
-    if (g_switches[50]) return -1;
-    if (g_switches[49]) return 4;
-    if (g_switches[48]) return 3;
-    if (g_switches[47]) return 2;
-    if (g_switches[46]) return 1;
-    if (g_switches[45]) return 0;
-    return -1;
-}
-
-static void draw_lucas_fall_event(
-    const MapState *m,
-    float camera_x, float camera_y, float origin_x, float origin_y)
-{
-    int slot;
-    float foot_x, foot_y;
-    TextureVertex *v;
-    float src_x;
-
-    if (!m || m->id != 1 || !g_lucas_fall_atlas) return;
-    slot = lucas_fall_frame_from_switches();
-    if (slot < 0) return;
-
-    foot_x = render_floor_pixel(
-        origin_x +
-        ((float)LUCAS_FALL_EVENT_X + g_event_shift_x[45] + 0.5f) * TILE_PX - camera_x
-    );
-    foot_y = render_floor_pixel(
-        origin_y +
-        ((float)LUCAS_FALL_EVENT_Y + g_event_shift_y[45] + 1.0f) * TILE_PX - camera_y
-    );
-
-    bind_texture_8888(g_lucas_fall_atlas, LUCAS_FALL_ATLAS_W, LUCAS_FALL_ATLAS_H);
-    sceGuTexFilter(GU_NEAREST, GU_NEAREST);
-    src_x = (float)(slot * LUCAS_FALL_SLOT_W + 1);
-    v = (TextureVertex *)sceGuGetMemory(2 * sizeof(TextureVertex));
-    v[0].u = src_x;
-    v[0].v = 1.0f;
-    v[0].x = foot_x - (float)LUCAS_FALL_SRC_W * 0.5f;
-    v[0].y = foot_y - (float)LUCAS_FALL_SRC_H;
-    v[0].z = 0.0f;
-    v[1].u = src_x + (float)LUCAS_FALL_SRC_W;
-    v[1].v = 1.0f + (float)LUCAS_FALL_SRC_H;
-    v[1].x = foot_x + (float)LUCAS_FALL_SRC_W * 0.5f;
-    v[1].y = foot_y;
-    v[1].z = 0.0f;
-    sceGuDrawArray(
-        GU_SPRITES,
-        GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D,
-        2, NULL, v
-    );
-}
-
-static void draw_lucas_corpse_event(
-    const MapState *m,
-    float camera_x, float camera_y, float origin_x, float origin_y)
-{
-    float foot_x, foot_y;
-    TextureVertex *v;
-    if (!m || m->id != 1 || !g_lucas_corpse) return;
-    /* Event 39 becomes the fallen Lucas body when switch 51 is ON and stays
-     * as the same corpse on page 3 while switch 52 is ON. */
-    if (!g_switches[51] && !g_switches[52]) return;
-
-    foot_x = render_floor_pixel(
-        origin_x + ((float)LUCAS_CORPSE_EVENT_X + 0.5f) * TILE_PX - camera_x
-    );
-    foot_y = render_floor_pixel(
-        origin_y + ((float)LUCAS_CORPSE_EVENT_Y + 1.0f) * TILE_PX - camera_y
-    );
-
-    bind_texture_8888(g_lucas_corpse, LUCAS_CORPSE_TEX_W, LUCAS_CORPSE_TEX_H);
-    v = (TextureVertex *)sceGuGetMemory(2 * sizeof(TextureVertex));
-    v[0].u = 1.0f; v[0].v = 1.0f;
-    v[0].x = foot_x - (float)LUCAS_CORPSE_SRC_W * 0.5f;
-    v[0].y = foot_y - (float)LUCAS_CORPSE_SRC_H;
-    v[0].z = 0.0f;
-    v[1].u = 1.0f + (float)LUCAS_CORPSE_SRC_W;
-    v[1].v = 1.0f + (float)LUCAS_CORPSE_SRC_H;
-    v[1].x = foot_x + (float)LUCAS_CORPSE_SRC_W * 0.5f;
-    v[1].y = foot_y;
-    v[1].z = 0.0f;
-    sceGuDrawArray(GU_SPRITES, GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_2D,
-                   2, NULL, v);
-}
-
 
 static void repair_map005_key_state(const MapState *m)
 {
@@ -312,13 +223,10 @@ static float g_scroll_text_y;
 
 static void render_world(
     const MapState *m, void *char_atlas,
-    void *a1_overlay, void *fall_atlas,
     int player_visible,
     float player_world_x, float player_world_y,
     int player_pattern, int player_direction,
-    int fall_slot, float fall_y_tiles,
-    void *portrait, void *dialog,
-    int flash_red_alpha, int black_alpha, int show_blank_box)
+    int flash_red_alpha, int black_alpha)
 {
     float camera_x, camera_y, origin_x, origin_y;
     float player_screen_x, player_screen_y;
@@ -420,14 +328,6 @@ static void render_world(
         camera_x, camera_y, origin_x, origin_y
     );
 
-    if (fall_slot >= 0 && fall_atlas && m->id == 1) {
-        float fall_foot_x = origin_x + ((float)FALL_EVENT_X + 0.5f) * TILE_PX - camera_x;
-        float fall_foot_y = origin_y + ((fall_y_tiles + 1.0f) * TILE_PX) - camera_y;
-        bind_texture_8888(fall_atlas, FALL_ATLAS_W, FALL_ATLAS_H);
-        set_pixel_art_texture_state();
-        draw_fall_frame(fall_slot, fall_foot_x, fall_foot_y);
-    }
-
     draw_event_sprites(
         m, 1, -1, player_world_y,
         camera_x, camera_y, origin_x, origin_y
@@ -494,13 +394,6 @@ static void render_world(
         --g_balloon_frames;
     }
 
-    /* 0.5.x atlases omitted switch-driven Lucas pages; keep the old fallback
-     * only for legacy assets.  0.6.4 renders them through active VM pages. */
-    if (!(m->vm_flags & 0x01u)) {
-        draw_lucas_fall_event(m, camera_x, camera_y, origin_x, origin_y);
-        draw_lucas_corpse_event(m, camera_x, camera_y, origin_x, origin_y);
-    }
-
     /* Gray is MZ/Pixi ColorFilter saturation (HSL lightness), before RGB tone.
      * Only gray needs readback. Split and sync the GU list before accessing VRAM.
      * The frame is read through the cached VRAM alias: uncached reads cost a
@@ -534,7 +427,8 @@ static void render_world(
 
     draw_vm_pictures(1, m->id==114);
     {
-        int veil_active = (a1_overlay != NULL) || g_picture6_visible || g_switches[20];
+        void *a1_overlay = NULL;
+        int veil_active = g_picture6_visible || g_switches[20];
 
         /* Save files produced by several 0.6.x builds could lose switch 20 and
          * Picture #6 independently during transfers.  In the original game the
@@ -571,31 +465,6 @@ static void render_world(
 
     draw_vm_pictures(0, m->id==114);
     if (g_scroll_text) draw_utf8_wrapped(g_scroll_text,g_scroll_text_len,36,g_scroll_text_y,444,512);
-
-    if (portrait) {
-        draw_texture_alpha(
-            portrait, PIC_TEX_W, PIC_TEX_H,
-            (float)SCREEN_W, (float)SCREEN_H,
-            0.0f, 0.0f, (float)SCREEN_W, (float)SCREEN_H, 255
-        );
-    }
-
-    if (show_blank_box) {
-        draw_solid_rect(
-            6.0f, (float)(SCREEN_H - DIALOG_VISIBLE_H + 4),
-            (float)(SCREEN_W - 12), (float)(DIALOG_VISIBLE_H - 8),
-            10, 10, 14, 220
-        );
-    }
-
-    if (dialog) {
-        draw_texture_alpha(
-            dialog, DIALOG_TEX_W, DIALOG_TEX_H,
-            (float)SCREEN_W, (float)DIALOG_VISIBLE_H,
-            0.0f, (float)(SCREEN_H - DIALOG_VISIBLE_H),
-            (float)SCREEN_W, (float)DIALOG_VISIBLE_H, 255
-        );
-    }
 
     draw_runtime_message_overlay();
     draw_runtime_choice_overlay();

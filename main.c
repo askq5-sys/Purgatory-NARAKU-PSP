@@ -53,45 +53,9 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 #define EVENT_ATLAS_H 512
 #define EVENT_ATLAS_BYTES (EVENT_ATLAS_W * EVENT_ATLAS_H * 4)
 
-#define FALL_ATLAS_W 512
-#define FALL_ATLAS_H 128
-#define FALL_ATLAS_BYTES (FALL_ATLAS_W * FALL_ATLAS_H * 4)
-#define FALL_SLOT_W 82
-#define FALL_SRC_W 80
-#define FALL_SRC_H 80
-#define FALL_DST_W 40
-#define FALL_DST_H 40
-#define FALL_EVENT_X 12
-
-/* Map001 second-visit Lucas corpse fall.  This is a real event sprite in the
- * original project (Event 45), not a player animation.  Earlier PSP builds
- * moved its logical event position but had no dynamic page graphic, making
- * the player appear frozen while an invisible event crawled downward. */
-#define LUCAS_FALL_ATLAS_W 256
-#define LUCAS_FALL_ATLAS_H 64
-#define LUCAS_FALL_ATLAS_BYTES (LUCAS_FALL_ATLAS_W * LUCAS_FALL_ATLAS_H * 4)
-#define LUCAS_FALL_SLOT_W 32
-#define LUCAS_FALL_SRC_W 24
-#define LUCAS_FALL_SRC_H 39
-#define LUCAS_FALL_EVENT_X 4
-#define LUCAS_FALL_EVENT_Y 0
-
-#define LUCAS_CORPSE_TEX_W 64
-#define LUCAS_CORPSE_TEX_H 64
-#define LUCAS_CORPSE_TEX_BYTES (LUCAS_CORPSE_TEX_W * LUCAS_CORPSE_TEX_H * 4)
-#define LUCAS_CORPSE_SRC_W 24
-#define LUCAS_CORPSE_SRC_H 39
-#define LUCAS_CORPSE_EVENT_X 4
-#define LUCAS_CORPSE_EVENT_Y 12
-
 #define PIC_TEX_W 512
 #define PIC_TEX_H 512
 #define PIC_TEX_BYTES (PIC_TEX_W * PIC_TEX_H * 4)
-
-#define DIALOG_TEX_W 512
-#define DIALOG_TEX_H 128
-#define DIALOG_TEX_BYTES (DIALOG_TEX_W * DIALOG_TEX_H * 4)
-#define DIALOG_VISIBLE_H 96
 
 #define MAP_HEADER_BYTES 20
 #define EVENT_HEADER_BYTES 14
@@ -217,8 +181,6 @@ PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 #define MESSAGE_SURFACE_SCALE 2
 #define MESSAGE_SURFACE_Y (g_runtime_message_position==0?-38:g_runtime_message_position==1?39:144)
 #define MESSAGE_SURFACE_BYTES (MESSAGE_SURFACE_W * MESSAGE_SURFACE_H * 4)
-#define LUCAS_FALL_ATLAS_PATH ASSET_ROOT "lucas_fall_atlas.rgba8888"
-#define LUCAS_CORPSE_PATH ASSET_ROOT "lucas_corpse.rgba8888"
 #define SE_BONE_PATH ASSET_ROOT "se_bonecrush4.pcm"
 #define SE_WATER_PATH ASSET_ROOT "se_water.pcm"
 #define SE_WATER_70_80_PATH ASSET_ROOT "se_water_70_80.pcm"
@@ -430,8 +392,6 @@ static int g_player_animation_moving = 0;
 static int g_player_animation_jumping = 0;
 static int g_player_animation_speed = 3;
 static uint32_t g_playtime_frames = 0;
-static void *g_lucas_fall_atlas = NULL;
-static void *g_lucas_corpse = NULL;
 static float g_actor_camera_x, g_actor_camera_y;
 static int g_picture6_visible = 0;
 static int g_picture6_alpha = 0;
@@ -589,13 +549,6 @@ int main(int argc, char *argv[])
     g_key_anim = load_exact_file(KEY_ANIM_PATH, KEY_ANIM_BYTES);
     if (!g_key_anim) fatal_error("Could not load key_anim.rgba8888");
     boot_diag("09a key animation loaded");
-    boot_diag("10 loading Lucas fall atlas");
-    g_lucas_fall_atlas = load_exact_file(LUCAS_FALL_ATLAS_PATH, LUCAS_FALL_ATLAS_BYTES);
-    if (!g_lucas_fall_atlas) fatal_error("Could not load lucas_fall_atlas.rgba8888");
-    boot_diag("10a fall atlas loaded");
-    boot_diag("11 loading Lucas corpse");
-    g_lucas_corpse = load_exact_file(LUCAS_CORPSE_PATH, LUCAS_CORPSE_TEX_BYTES);
-    if (!g_lucas_corpse) fatal_error("Could not load lucas_corpse.rgba8888");
 
     boot_diag("11a base textures loaded");
     init_gu();
@@ -797,7 +750,6 @@ TITLE_ENTRY:
                 int fx = tile_x;
                 int fy = tile_y;
                 int vm_result;
-                uint16_t event_id;
 
                 /* RPG Maker checks the current cell for below-character action
                  * events, then the cell in front of the player. */
@@ -840,33 +792,6 @@ TITLE_ENTRY:
                     if (g_request_title) goto TITLE_ENTRY;
                     target_x = tile_x;
                     target_y = tile_y;
-                    sceCtrlPeekBufferPositive(&pad, 1);
-                    prev_buttons = pad.Buttons;
-                    continue;
-                }
-
-                /* Compatibility fallback for the early pre-rendered simple
-                 * text events.  It can be removed after all equivalent pages
-                 * are handled by the VM. */
-                fx = tile_x;
-                fy = tile_y;
-                event_id = action_event_at(&map, fx, fy);
-
-                if (!event_id) {
-                    if (direction_row == 0) fy++;
-                    else if (direction_row == 1) fx--;
-                    else if (direction_row == 2) fx++;
-                    else if (direction_row == 3) fy--;
-                    event_id = action_event_at(&map, fx, fy);
-                }
-
-                if (event_id) {
-                    float world_x = ((float)tile_x + 0.5f) * TILE_PX;
-                    float world_y = ((float)tile_y + 1.0f) * TILE_PX;
-                    wait_event_message(
-                        event_id, lang, &map, char_atlas, NULL,
-                        world_x, world_y, 1, direction_row
-                    );
                     sceCtrlPeekBufferPositive(&pad, 1);
                     prev_buttons = pad.Buttons;
                     continue;
@@ -919,10 +844,9 @@ TITLE_ENTRY:
                         if (g_world_render_frames == frames_before_touch) {
                             g_player_animation_speed = current_real_move_speed;
                             g_player_animation_jumping = 1; /* stop count still zero */
-                            render_world(&map, char_atlas, NULL, NULL,
+                            render_world(&map, char_atlas,
                                 g_player_visible, (tile_x + 0.5f) * TILE_PX,
-                                (tile_y + 1.0f) * TILE_PX, 1, direction_row,
-                                -1, 0.0f, NULL, NULL, 0, 0, 0);
+                                (tile_y + 1.0f) * TILE_PX, 1, direction_row, 0, 0);
                         }
                         sceCtrlPeekBufferPositive(&pad, 1);
                         prev_buttons = pad.Buttons;
@@ -953,7 +877,7 @@ TITLE_ENTRY:
                         }
 
                         fade_game_world(
-                            &map, char_atlas, NULL,
+                            &map, char_atlas,
                             old_x, old_y, 1, direction_row,
                             0, 255, 10
                         );
@@ -980,7 +904,7 @@ TITLE_ENTRY:
                             float new_x = ((float)tile_x + 0.5f) * TILE_PX;
                             float new_y = ((float)tile_y + 1.0f) * TILE_PX;
                             fade_game_world(
-                                &map, char_atlas, NULL,
+                                &map, char_atlas,
                                 new_x, new_y, 1, direction_row,
                                 255, 0, 10
                             );
@@ -1047,10 +971,8 @@ TITLE_ENTRY:
                 ? current_real_move_speed : clamp_move_speed_code(g_player_move_speed_code);
 
             render_world(
-                &map, char_atlas, NULL, NULL,
-                g_player_visible, world_x, world_y, pattern, direction_row,
-                -1, 0.0f, NULL, NULL, 0, 0, 0
-            );
+                &map, char_atlas,
+                g_player_visible, world_x, world_y, pattern, direction_row, 0, 0);
         }
 
         prev_buttons = pad.Buttons;

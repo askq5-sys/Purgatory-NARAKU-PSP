@@ -188,14 +188,6 @@ static int counter_at(const MapState *m, int x, int y)
     return m->map_bin[MAP_HEADER_BYTES + cells * 10u + (size_t)y * m->w + x] != 0;
 }
 
-static uint16_t action_event_at(const MapState *m, int x, int y)
-{
-    size_t cell;
-    if (x < 0 || y < 0 || x >= m->w || y >= m->h) return 0;
-    cell = (size_t)y * m->w + x;
-    return read_u16_le(m->action_map + cell * 2u);
-}
-
 static uint8_t transfer_index_at(const MapState *m, int x, int y)
 {
     if (x < 0 || y < 0 || x >= m->w || y >= m->h) return 0;

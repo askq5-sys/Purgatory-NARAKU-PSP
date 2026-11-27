@@ -2,7 +2,7 @@
  * Part of main.c: included there in order, not a standalone unit. */
 
 static void fade_game_world(
-    const MapState *m, void *char_atlas, void *a1,
+    const MapState *m, void *char_atlas,
     float player_x, float player_y,
     int player_pattern, int player_dir,
     int from, int to, int frames);
@@ -50,10 +50,8 @@ static int vm_move_player_one(
         g_player_animation_jumping = i == frames; /* arrival: stop count is still zero */
         g_player_animation_speed = speed_code;
         render_world(
-            m, char_atlas, NULL, NULL,
-            g_player_visible, wx, wy, 1, *direction_row,
-            -1, 0.0f, NULL, NULL, 0, 0, 0
-        );
+            m, char_atlas,
+            g_player_visible, wx, wy, 1, *direction_row, 0, 0);
     }
     *tile_x = nx;
     *tile_y = ny;
@@ -214,9 +212,9 @@ static void vm_execute_move_route(
                         ? clamp_float(base_y - SCREEN_H * 0.5f, 0.0f, max_y) : 0.0f;
                     g_player_animation_jumping = 1;
                     g_player_animation_moving = remain > 0 && (p1 || p2);
-                    render_world(m,char_atlas,NULL,NULL,g_player_visible,
+                    render_world(m,char_atlas,g_player_visible,
                         base_x, base_y - jump_h,
-                        1,*direction_row,-1,0.0f,NULL,NULL,0,0,0);
+                        1,*direction_row,0,0);
                 }
                 g_camera_locked = old_camera_locked;
                 g_camera_lock_x = old_camera_x;
@@ -271,7 +269,7 @@ static int vm_transfer_player(
 
     if (frames > 0) {
         fade_game_world(
-            m, char_atlas, NULL,
+            m, char_atlas,
             old_x, old_y, g_player_visible, *direction_row,
             0, 255, frames
         );
@@ -287,7 +285,7 @@ static int vm_transfer_player(
         float nx = ((float)*tile_x + 0.5f) * TILE_PX;
         float ny = ((float)*tile_y + 1.0f) * TILE_PX;
         fade_game_world(
-            m, char_atlas, NULL,
+            m, char_atlas,
             nx, ny, g_player_visible, *direction_row,
             255, 0, frames
         );

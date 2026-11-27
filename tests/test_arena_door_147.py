@@ -21,7 +21,7 @@ panel=mp['events'][12]['pages'][1];assert panel['trigger']==0
 assert [c['parameters'][0] for c in panel['list'] if c['code']==230]==[3,3,3,5]
 a=s.index('static int vm_read_event(');b=s.index('static int is_chase_enemy(',a);vm=s[a:b]
 helper=(r/'runtime/event_tile_passage.h').read_text()
-a=s.index('static uint8_t pass_mask_at(');b=s.index('static uint16_t action_event_at(',a);pass_fn=s[a:b]
+a=s.index('static uint8_t pass_mask_at(');b=s.index('\n}\n',a)+3;pass_fn=s[a:b]
 a=s.index('        } else if (op == VM_OP_SWITCH) {');b=s.index('        } else if (op == VM_OP_SELF_SWITCH)',a);switch=s[a:b].split('{',1)[1]
 defines='\n'.join(re.findall(r'^#define VM_OP_\w+ \d+',s,re.M))
 pre=r'''#include <stdint.h>

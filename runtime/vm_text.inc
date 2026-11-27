@@ -125,10 +125,8 @@ static void vm_render_frame(
     float wy = ((float)tile_y + 1.0f) * TILE_PX;
     g_player_animation_speed = clamp_move_speed_code(g_player_move_speed_code);
     render_world(
-        m, char_atlas, NULL, NULL,
-        g_player_visible, wx, wy, 1, direction_row,
-        -1, 0.0f, NULL, NULL, red_alpha, black_alpha, 0
-    );
+        m, char_atlas,
+        g_player_visible, wx, wy, 1, direction_row, red_alpha, black_alpha);
     vm_pump_stage_message(m,char_atlas,tile_x,tile_y,direction_row);
 }
 

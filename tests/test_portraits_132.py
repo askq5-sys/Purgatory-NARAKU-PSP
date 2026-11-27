@@ -18,7 +18,7 @@ for row in rows:
 # Exercise actual loader and draw routine for the new format and legacy pictures.
 s=main_source(r);a=s.index('#define MAX_ACTIVE_PICTURES');b=s.index('static volatile int g_audio_stop',a);types=s[a:b]
 a=s.index('static PictureSlot *picture_slot(');b=s.index('static void draw_fog_a1_overlay(',a);loader=s[a:b]
-a=s.index('static void draw_vm_pictures(');b=s.index('static void draw_lucas_fall_event(',a);drawing=s[a:b]
+a=s.index('static void draw_vm_pictures(');b=s.index('\n}\n',a)+3;drawing=s[a:b]
 pre='''#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

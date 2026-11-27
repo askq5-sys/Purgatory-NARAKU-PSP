@@ -184,12 +184,3 @@ static int choose_language(int selected)
     }
 }
 
-static const char *lang_tag(int lang)
-{
-    switch (lang) {
-        case 1: return "ja";
-        case 2: return "zhcn";
-        case 3: return "zhtw";
-        default: return "en";
-    }
-}
