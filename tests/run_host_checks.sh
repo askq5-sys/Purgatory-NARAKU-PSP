@@ -15,7 +15,7 @@ for t in routes inventory_snapshot market_game_root market_asset_pack pcm_reader
          user_mode_link visible_tile_range book_save_136 cutscene_position_137 escape_gait \
          factory_depth flashback gallery_door_172 giant_contact_149 killer_contact \
          note_mask_136 notification_pause rope_138 save_preview_159 save_preview_170 \
-         shop_loop_159 spider_exit_171 story_save_access transparent_143; do
+         shop_loop_159 spider_exit_171 story_save_access transparent_143 tone_gray; do
     python3 "$ROOT_DIR/tests/test_$t.py"
 done
 bash -n "$ROOT_DIR/tools/build_deploy.sh"

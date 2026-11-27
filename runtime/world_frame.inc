@@ -502,25 +502,23 @@ static void render_world(
     }
 
     /* Gray is MZ/Pixi ColorFilter saturation (HSL lightness), before RGB tone.
-     * Only gray needs readback. Split and sync the GU list before accessing VRAM;
-     * the uncached alias prevents stale CPU cache lines after GE writes. */
-    if (g_world_tone_gray > 0) {
+     * Only gray needs readback. Split and sync the GU list before accessing VRAM.
+     * The frame is read through the cached VRAM alias: uncached reads cost a
+     * full bus transaction per pixel on hardware. Drop stale cache lines before
+     * reading the GE output and write the result back before the GE resumes.
+     * Skipped when the tone turns every pixel black or white anyway. */
+    if (g_world_tone_gray > 0 &&
+        !tone_hides_gray(g_world_tone_r, g_world_tone_g, g_world_tone_b)) {
         int x,y,gray=g_world_tone_gray > 255 ? 255 : g_world_tone_gray;
-        volatile uint32_t *fb=(volatile uint32_t *)(0x44000000u | (uintptr_t)g_draw_buffer);
+        uint32_t *fb=(uint32_t *)(0x04000000u | (uintptr_t)g_draw_buffer);
+        const unsigned int bytes=(unsigned int)(BUF_W*SCREEN_H*4);
         sceGuFinish();sceGuSync(0,0);
-        for(y=0;y<SCREEN_H;++y) for(x=0;x<SCREEN_W;++x) {
-            uint32_t c=fb[y*BUF_W+x];
-            int r=c&255,g=(c>>8)&255,b=(c>>16)&255;
-            int hi=r>g?r:g,lo=r<g?r:g;
-            int l;
-            if (b > hi) hi = b;
-            if (b < lo) lo = b;
-            l = (hi + lo + 1) / 2;
-            r=(r*(255-gray)+l*gray+127)/255;
-            g=(g*(255-gray)+l*gray+127)/255;
-            b=(b*(255-gray)+l*gray+127)/255;
-            fb[y*BUF_W+x]=(c&0xFF000000u)|r|(g<<8)|(b<<16);
+        sceKernelDcacheWritebackInvalidateRange(fb,bytes);
+        for(y=0;y<SCREEN_H;++y) {
+            uint32_t *row=fb+y*BUF_W;
+            for(x=0;x<SCREEN_W;++x) row[x]=tone_gray_pixel(row[x],gray);
         }
+        sceKernelDcacheWritebackInvalidateRange(fb,bytes);
         sceGuStart(GU_DIRECT,gu_list);
         sceGuTexFlush();
     }
@@ -628,9 +626,12 @@ static void render_world(
         );
     }
 
+    perf_hud_draw();
     sceGuFinish();
     sceGuSync(0, 0);
+    perf_frame_done();
     sceDisplayWaitVblankStart();
+    perf_after_vblank();
     g_last_world_buffer = g_draw_buffer;
     g_last_world_buffer_valid = 1;
     g_draw_buffer = sceGuSwapBuffers();

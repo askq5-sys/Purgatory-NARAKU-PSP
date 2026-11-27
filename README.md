@@ -94,6 +94,11 @@ Build the compressed market folder after that:
 ./tools/build_market.sh [SOURCE_GAME_DIR] [DEST_GAME_DIR]
 ```
 
+For measurements on a PSP, build with `-DNARAKU_PERF_HUD=ON`: the top line
+shows FPS, the work time per frame (average and worst over one second; above
+16.7 ms the game drops below 60 FPS) and free memory. Without the option the
+EBOOT is unchanged.
+
 Both scripts stop if the EBOOT imports PSP kernel libraries
 (`tools/check_eboot_imports.py`): such an EBOOT runs in PPSSPP but shows a
 black screen on a real PSP.
@@ -142,6 +147,7 @@ Tests read the combined source through `tests/source_util.py`.
 | `vm_pages.inc` | Event page selection |
 | `world_draw.inc` | Camera, tiles, event sprites, pictures |
 | `event_routes.inc` | Move routes, scripted actors |
+| `perf_hud.inc` | Frame-time counter (`NARAKU_PERF_HUD` builds) |
 | `world_frame.inc` | Picture animation, special rooms, frame rendering |
 | `vm_text.inc` | Script VM: flashes, tints, messages, choices |
 | `vm_interpreter.inc` | Script VM: commands, move routes, transfers |

@@ -20,6 +20,7 @@
 PSP_MODULE_INFO("NARAKU PSP", PSP_MODULE_USER, 1, 78);
 #include "runtime/player_animation.h"
 #include "runtime/render_boundaries.h"
+#include "runtime/tone_gray.h"
 #include "runtime/pressing_room.h"
 PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER);
 
@@ -497,6 +498,7 @@ static int g_screen_flash_remaining = 0;
 #include "runtime/vm_pages.inc"
 #include "runtime/world_draw.inc"
 #include "runtime/event_routes.inc"
+#include "runtime/perf_hud.inc"
 #include "runtime/world_frame.inc"
 #include "runtime/vm_text.inc"
 #include "runtime/vm_interpreter.inc"
