@@ -1,6 +1,6 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source, original_dir
+from source_util import report_path, main_source, original_dir
 from vm_util import styled
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile,runpy
@@ -68,5 +68,5 @@ static int g_map_scroll_remaining,g_map_scroll_total;
 post='''int main(void){vm_begin_map_scroll(6,6,2);assert(g_camera_scroll_x==0 && g_map_scroll_remaining==384);tick_map_scroll();assert(g_camera_scroll_x==.375f);for(int i=1;i<384;i++)tick_map_scroll();assert(g_camera_scroll_x==144 && g_map_scroll_remaining==0);vm_begin_map_scroll(4,7,3);assert(g_camera_scroll_x==144);tick_map_scroll();assert(g_camera_scroll_x<144 && g_camera_scroll_x>143);for(int i=1;i<224;i++)tick_map_scroll();assert(g_camera_scroll_x==-24);return 0;}'''
 with tempfile.TemporaryDirectory()as tmp:
  p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(pre+s[a:b]+post);subprocess.run(['cc','-std=c99',str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
-(r/'audit_stage_126.json').write_text(json.dumps(report,indent=2))
+report_path('audit_stage_126.json').write_text(json.dumps(report,indent=2))
 print('PASS: current-stage page audit; complete next-stage command streams, portraits/audio, one-shot gates, directional frames; actual NPC jump/wait/repeat and asynchronous scroll cadence')

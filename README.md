@@ -140,14 +140,8 @@ Select Russian through Settings → Language → Русский.
 | `main.c` | Settings, shared state and the main loop |
 | `runtime/*.inc` | Runtime modules included by `main.c` (see below) |
 | `runtime/*.h` | Self-contained helpers (routes, animation, puzzles) |
-| `tools/build_deploy.sh`, `tools/build_market.sh` | Build and install scripts |
-| `tools/assets_patch.txt` | Assets copied by `build_deploy.sh` |
-| `tools/prepare_*.py`, `tools/verify_*.py` | Conversion of the PC game data |
-| `tools/fix_doorway_gradient_priority.py` | Doorway shading fix for converted maps |
-| `tools/refresh_vm_text.py` | Updates outdated text in installed map scripts |
-| `tools/runtime_assets.py` | Lists asset files the EBOOT never loads |
+| `tools/` | Build, install and conversion scripts, see `tools/README.md` |
 | `tests/` | Quick checks (`run_host_checks.sh`) and full checks with game data (`run_all_checks.sh`), see `tests/README.md` |
-| `tools/prepare_test_data.py` | Converter manifests needed by the full checks |
 | `docs/releases/` | Release notes |
 
 ### Runtime modules

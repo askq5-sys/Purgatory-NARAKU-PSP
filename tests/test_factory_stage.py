@@ -1,6 +1,6 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source, original_dir
+from source_util import report_path, main_source, original_dir
 from vm_util import styled
 from pathlib import Path
 import json,struct,sys,runpy,subprocess,tempfile
@@ -73,5 +73,5 @@ static float clamp_float(float x,float a,float b){return x<a?a:(x>b?b:x);}
 post='''int main(void){float cx,cy,ox,oy;for(int id=21;id<=27;id++){if(id!=21&&id!=23&&id!=27)continue;MapState m={id,17,15};compute_camera(&m,180,100,&cx,&cy,&ox,&oy);assert(ox+7.5f*24-cx==240);}return 0;}'''
 with tempfile.TemporaryDirectory()as tmp:
  p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(pre+s[a:b]+post);subprocess.run(['cc','-std=c99',str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
-(r/'audit_factory_127.json').write_text(json.dumps(report,indent=2))
+report_path('audit_factory_127.json').write_text(json.dumps(report,indent=2))
 print('PASS: 326 factory pages accounted for, original commands/autonomous routes, picture/audio references, atlas bounds; actual chase/page cancel, Emma step animation, corpse routes, 430-frame nonblocking machine cycle, room centering')

@@ -27,6 +27,9 @@ needs:
   `original/` inside the repository or `original/` next to it;
 - Python packages from `requirements.txt` (Pillow, numpy).
 
+A few factory and stage checks also write JSON summaries to `tests/reports/`
+(not tracked by git).
+
 The script creates the two converter manifests the tests read
 (`tools/prepare_test_data.py`) when they are missing.
 

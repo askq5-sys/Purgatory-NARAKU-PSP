@@ -1,6 +1,6 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import original_dir
+from source_util import report_path, original_dir
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from vm_util import styled, use_exact_audio_ids
@@ -127,5 +127,5 @@ for eid,correct,gate in((7,8888,370),(8,8465,371)):
 h=(r/'runtime/factory_routes.h').read_text();m=json.load(open(G/'data/Map043.json'))
 for eid,j in((5,0),(8,1)):
  p=m['events'][eid]['pages'][j];data=bytes(map(int,re.search(f'factory_route_43_{eid}_{j}'+r'\[\] = \{([^}]+)',h)[1].split(',')));assert data==b''.join(struct.pack('<Bhh',c['code'],0,0)for c in p['moveRoute']['list']if c['code'])
-(r/'audit_factory_131.json').write_text(json.dumps({'maps':report,'pages':sum(x['pages']for x in report),'visible_pages':sprites,'source_frames_checked':frames},indent=2))
+report_path('audit_factory_131.json').write_text(json.dumps({'maps':report,'pages':sum(x['pages']for x in report),'visible_pages':sprites,'source_frames_checked':frames},indent=2))
 print(f'PASS: {sum(x["pages"]for x in report)} original pages, {sprites} visual pages, {frames} exact/filtered source frames, stable audio/pictures; sheet/crank/key/fade/password branches')

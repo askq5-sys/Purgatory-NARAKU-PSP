@@ -1,6 +1,6 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source, original_dir
+from source_util import report_path, main_source, original_dir
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile
 from PIL import Image
@@ -77,5 +77,5 @@ EventSpriteRecord tile={2,17,4097,1,48,48,5,19};draw_event_sprite_record(&tile,3
 with tempfile.TemporaryDirectory()as tmp:
  p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(pre+s[s.index("static unsigned int g_ambush_reveal_start;"):s.index("static void draw_event_sprite_record(")]+s[a:b]+post);subprocess.run(['cc','-std=c99',str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 assert '(m->id>=32 && m->id<=104) || (m->id>=111 && m->id<=139)' in s and 'free(m->event_atlas_detail)'in s
-(r/'audit_factory_graphics_129.json').write_text(json.dumps(counts,indent=2))
+report_path('audit_factory_graphics_129.json').write_text(json.dumps(counts,indent=2))
 print('PASS:',counts,'native/prefiltered source pixels, all collider pages and tile passage masks; actual detail texture selection and unchanged display size')

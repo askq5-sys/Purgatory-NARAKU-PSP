@@ -44,3 +44,10 @@ def original_dir(root):
         if candidate and (Path(candidate) / 'data' / 'System.json').exists():
             return Path(candidate)
     raise FileNotFoundError('PC game data not found: set NARAKU_ORIGINAL or put it in original/')
+
+
+def report_path(name):
+    """Where the full checks write their JSON reports (tests/reports/)."""
+    path = Path(__file__).resolve().parent / 'reports'
+    path.mkdir(exist_ok=True)
+    return path / name
