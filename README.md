@@ -102,12 +102,14 @@ Build the compressed market folder after that:
 ./tools/build_market.sh [SOURCE_GAME_DIR] [DEST_GAME_DIR]
 ```
 
-For measurements on a PSP, build with `-DNARAKU_PERF_HUD=ON`: the top line
-shows FPS, the work time per frame (average and worst over one second; above
-16.7 ms the game drops below 60 FPS) and free memory. Without the option the
-EBOOT is unchanged.
+For measurements on a PSP, build with `NARAKU_PERF_HUD=ON tools/build_deploy.sh`
+(or `-DNARAKU_PERF_HUD=ON`): the top line shows FPS, the work time per frame
+(average/worst over one second; above 16.7 ms the game drops below 60 FPS) and
+the heap in use / the most the heap has grown to. Without the option the
+EBOOT is unchanged. The build scripts pass every option explicitly, so a value
+left in the CMake cache never reaches a normal or release build.
 
-`-DNARAKU_SWIZZLE_TEXTURES=ON` stores the map tile atlases, event sprite
+`NARAKU_SWIZZLE_TEXTURES=ON` (environment or `-D`) stores the map tile atlases, event sprite
 atlases, character atlases, A1 veil, fog and parallax in the GE block
 ("swizzled") layout, which the PSP samples faster. The pictures on screen are
 identical; a wrong layout would show as scrambled textures, also in PPSSPP.

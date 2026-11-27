@@ -4,7 +4,7 @@ project(naraku_psp C)
 
 option(NARAKU_COMPRESSED_ASSETS "Read DEFLATE-compressed texture/audio assets" OFF)
 option(NARAKU_BOOT_DIAGNOSTICS "Show and log PSP startup checkpoints" OFF)
-option(NARAKU_PERF_HUD "Show FPS, frame work time and free memory on screen" OFF)
+option(NARAKU_PERF_HUD "Show FPS, frame work time and heap use on screen" OFF)
 option(NARAKU_SWIZZLE_TEXTURES "Store large textures in the GE block layout" OFF)
 set(NARAKU_GAME_DIR "NARAKU" CACHE STRING "Folder name under ms0:/PSP/GAME/")
 

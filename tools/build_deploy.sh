@@ -31,7 +31,12 @@ test "$missing" = 0
 mkdir -p "$ROOT_DIR/build"
 cd "$ROOT_DIR/build"
 # Compressed-asset support also reads plain files, so one EBOOT fits both layouts.
-psp-cmake -DNARAKU_COMPRESSED_ASSETS=ON -DNARAKU_GAME_DIR=NARAKU ..
+# Options are passed every time so a value cached by an earlier build cannot
+# leak in: NARAKU_PERF_HUD=ON tools/build_deploy.sh builds the measuring EBOOT.
+psp-cmake -DNARAKU_COMPRESSED_ASSETS=ON -DNARAKU_GAME_DIR=NARAKU \
+    -DNARAKU_PERF_HUD="${NARAKU_PERF_HUD:-OFF}" \
+    -DNARAKU_SWIZZLE_TEXTURES="${NARAKU_SWIZZLE_TEXTURES:-OFF}" \
+    -DNARAKU_BOOT_DIAGNOSTICS="${NARAKU_BOOT_DIAGNOSTICS:-OFF}" ..
 make -B -j"$(nproc)"
 test -s EBOOT.PBP
 python3 "$ROOT_DIR/tools/check_eboot_imports.py" EBOOT.PBP

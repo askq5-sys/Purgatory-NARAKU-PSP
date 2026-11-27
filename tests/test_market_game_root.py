@@ -18,6 +18,14 @@ class MarketGameRootTests(unittest.TestCase):
         self.assertIn('-DNARAKU_GAME_DIR=NARAKU', script)
         self.assertNotIn('GAME_DIR_NAME=', script)
 
+    def test_build_scripts_never_inherit_cached_options(self):
+        market = (ROOT / "tools/build_market.sh").read_text()
+        deploy = (ROOT / "tools/build_deploy.sh").read_text()
+        self.assertIn('-DNARAKU_PERF_HUD=OFF', market)
+        self.assertIn('-DNARAKU_BOOT_DIAGNOSTICS=OFF', market)
+        for option in ("PERF_HUD", "SWIZZLE_TEXTURES", "BOOT_DIAGNOSTICS"):
+            self.assertIn(f'-DNARAKU_{option}="${{NARAKU_{option}:-OFF}}"', deploy)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -29,7 +29,11 @@ esac
 BUILD_DIR="$ROOT_DIR/build_market"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
-psp-cmake -DNARAKU_COMPRESSED_ASSETS=ON -DNARAKU_GAME_DIR=NARAKU ..
+# Release builds never carry measuring or diagnostic options, whatever an
+# earlier build left in the CMake cache.
+psp-cmake -DNARAKU_COMPRESSED_ASSETS=ON -DNARAKU_GAME_DIR=NARAKU \
+    -DNARAKU_PERF_HUD=OFF -DNARAKU_BOOT_DIAGNOSTICS=OFF \
+    -DNARAKU_SWIZZLE_TEXTURES="${NARAKU_SWIZZLE_TEXTURES:-OFF}" ..
 if ! grep -q 'NARAKU_GAME_DIR' CMakeFiles/naraku_psp.dir/flags.make; then
     echo "CMake did not embed the game folder name in the EBOOT. Update CMakeLists.txt before building." >&2
     exit 1
