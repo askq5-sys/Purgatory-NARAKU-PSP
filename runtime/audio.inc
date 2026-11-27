@@ -14,6 +14,22 @@ static void set_bgm_track(const char *path)
     g_bgm_generation++;
 }
 
+#ifdef NARAKU_PERF_HUD
+/* Music read timing for the perf HUD: one buffer plays for 92.9 ms, so a
+ * read (memory stick + decoding) slower than that leaves a gap. */
+#define PERF_BGM_BUFFER_US 92880u
+static volatile unsigned int g_perf_bgm_read_max, g_perf_bgm_late;
+#define PERF_BGM_READ_BEGIN() unsigned long long perf_bgm_t0 = sceKernelGetSystemTimeWide()
+#define PERF_BGM_READ_END() do { \
+        unsigned int us_ = (unsigned int)(sceKernelGetSystemTimeWide() - perf_bgm_t0); \
+        if (us_ > g_perf_bgm_read_max) g_perf_bgm_read_max = us_; \
+        if (us_ > PERF_BGM_BUFFER_US) ++g_perf_bgm_late; \
+    } while (0)
+#else
+#define PERF_BGM_READ_BEGIN() do { } while (0)
+#define PERF_BGM_READ_END() do { } while (0)
+#endif
+
 static int bgm_thread(SceSize args, void *argp)
 {
     PcmReader reader;
@@ -55,6 +71,7 @@ static int bgm_thread(SceSize args, void *argp)
         }
 
         {
+            PERF_BGM_READ_BEGIN();
             size_t got = pcm_reader_read(&reader, buffer, AUDIO_BYTES);
             if (got < AUDIO_BYTES) {
                 if (pcm_reader_finished(&reader)) {
@@ -66,6 +83,7 @@ static int bgm_thread(SceSize args, void *argp)
                 if (got < AUDIO_BYTES)
                     memset((uint8_t *)buffer + got, 0, AUDIO_BYTES - got);
             }
+            PERF_BGM_READ_END();
             {
                 int vol = PSP_AUDIO_VOLUME_MAX * g_bgm_volume / 100;
                 if (vol < 0) vol = 0;
