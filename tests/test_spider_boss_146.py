@@ -1,6 +1,6 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
 from pathlib import Path
 import runpy,subprocess,tempfile,struct,json,sys
 from PIL import Image,ImageChops
@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory()as td:
  subprocess.run(['cc','-std=c99','-Wno-unused-function','-I',str(r),str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 # Native giant-spider gait and both boss sides exactly match the source pixels.
 sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-G=r.parent/'original';O=r/'assets';key=bytes.fromhex(w.read_json(G/'data/System.json')['encryptionKey'])
+G=original_dir(r);O=r/'assets';key=bytes.fromhex(w.read_json(G/'data/System.json')['encryptionKey'])
 for mid,name in [(69,'!お肉ラスボス'),(72,'!デカ蜘蛛キャラチップ')]:
  mp=w.read_json(G/'data'/f'Map{mid:03}.json');eb=(O/f'map{mid:03}_events.bin').read_bytes();vb=(O/f'map{mid:03}_vm.bin').read_bytes()
  ne,_,_=struct.unpack_from('<HHI',vb,4);mw,mh=mp['width'],mp['height'];nt=struct.unpack_from('<H',eb,8)[0];sb=14+mw*mh*5+nt*20;pb=20+ne*10

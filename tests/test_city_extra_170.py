@@ -1,8 +1,11 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import original_dir
 from pathlib import Path
 import sys,struct
 from PIL import Image
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-G=r.parent/'original';key=bytes.fromhex(w.read_json(G/'data/System.json')['encryptionKey'])
+G=original_dir(r);key=bytes.fromhex(w.read_json(G/'data/System.json')['encryptionKey'])
 for mid in (*range(80,105),*range(111,140)):
  original=w.read_json(G/'data'/f'Map{mid:03}.json')
  assert w.adapt_stage_152(original,mid)['events']==original['events'],mid

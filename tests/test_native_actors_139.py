@@ -1,6 +1,7 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
+from vm_util import styled
 """Verify native actor pixels and unchanged story scripts across supported maps."""
 from pathlib import Path
 import json, struct, sys, subprocess, tempfile
@@ -9,7 +10,7 @@ from PIL import Image
 r = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(r / 'tools'))
 import prepare_world_v060 as w
-game = r.parent / 'original'
+game = original_dir(r)
 key = bytes.fromhex(w.read_json(game / 'data/System.json')['encryptionKey'])
 texts = w.read_json(game / 'data/I18NTexts.json')
 w.PICTURE_IDS = w.read_json(r / 'assets/picture_v050_manifest.json')
@@ -36,7 +37,7 @@ for mid in list(range(1,69))+[70]:
         for j, page in enumerate(data['events'][eid]['pages']):
             pg = struct.unpack_from('<BBBBHHBBHII', vb, pb + (first+j)*20)
             ref, off, size = pg[8:]
-            assert vb[blob+off:blob+off+size] == (w.compile_vm_commands(page, texts,preserve_message_background=mid in (62,67,68)) if pg[7] else bytes([0])), (mid,eid,j)
+            assert vb[blob+off:blob+off+size] == (styled(mid,eid,j,w.compile_vm_commands(page, texts,preserve_message_background=mid in (62,67,68))) if pg[7] else bytes([0])), (mid,eid,j)
             pages += 1
             if not ref:
                 continue

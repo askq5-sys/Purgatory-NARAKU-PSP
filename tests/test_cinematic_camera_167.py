@@ -1,11 +1,11 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
 """Execute the actual camera and check original underground scrolling payload."""
 from pathlib import Path
 import subprocess,tempfile,sys,struct
 r=Path(__file__).resolve().parents[1];s=main_source(r)
-a=s.index('static void compute_camera(');b=s.index('static void draw_map_slot_local',a)
+a=s.index('static void compute_camera(');b=s.index('static void draw_character_frame(',a)
 pre='''#include <assert.h>
 #define TILE_PX 24
 #define SCREEN_W 480
@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory()as td:
  p=Path(td)/'t.c';e=Path(td)/'t';p.write_text(pre+s[a:b]+post)
  subprocess.run(['cc','-std=c99',str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-G=r.parent/'original';texts=w.read_json(G/'data/I18NTexts.json');mp=w.read_json(G/'data/Map104.json')
+G=original_dir(r);texts=w.read_json(G/'data/I18NTexts.json');mp=w.read_json(G/'data/Map104.json')
 commands=mp['events'][2]['pages'][0]['list'];at=next(i for i,c in enumerate(commands)if c['code']==105)
 chunk=[]
 for c in commands[at:]:

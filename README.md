@@ -117,7 +117,8 @@ Select Russian through Settings → Language → Русский.
 | `tools/assets_patch.txt` | Assets copied by `build_deploy.sh` |
 | `tools/prepare_*.py`, `tools/verify_*.py` | Conversion of the PC game data |
 | `tools/fix_doorway_gradient_priority.py` | Doorway shading fix for converted maps |
-| `tests/` | Host checks (`tests/run_host_checks.sh`) |
+| `tests/` | Quick checks (`run_host_checks.sh`) and full checks with game data (`run_all_checks.sh`), see `tests/README.md` |
+| `tools/prepare_test_data.py` | Converter manifests needed by the full checks |
 | `docs/releases/` | Release notes |
 
 ### Runtime modules

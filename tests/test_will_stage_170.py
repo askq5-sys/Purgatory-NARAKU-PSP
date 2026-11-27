@@ -1,11 +1,12 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
+from vm_util import styled
 """Audit original elevator/surface/Ending 2 resources and execute lift scheduler."""
 from pathlib import Path
 import ast,json,re,struct,subprocess,sys,tempfile
 from PIL import Image
-r=Path(__file__).resolve().parents[1];G=r.parent/'original';O=r/'assets'
+r=Path(__file__).resolve().parents[1];G=original_dir(r);O=r/'assets'
 sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
 texts=w.read_json(G/'data/I18NTexts.json');key=bytes.fromhex(w.read_json(G/'data/System.json')['encryptionKey'])
 w.PICTURE_IDS=w.read_json(O/'picture_v050_manifest.json');audio=w.read_json(O/'audio_exact_v079.json')
@@ -26,7 +27,7 @@ for mid in (*range(79,105),*range(111,140)):
   for j,pg in enumerate(ev['pages']):
    rec=struct.unpack_from('<BBBBHHBBHII',b,base+(first+j)*20);ref,off,size=rec[8:]
    assert rec[7] and w.page_vm_supported(pg)
-   assert b[blob+off:blob+off+size]==w.compile_vm_commands(pg,texts,preserve_message_background=True)
+   assert b[blob+off:blob+off+size]==styled(mid,eid,j,w.compile_vm_commands(pg,texts,preserve_message_background=True))
    assert (rec[0]&7,rec[4],rec[5],rec[6])==w.vm_page_conditions(pg)
    assert (rec[1],rec[2],bool(rec[3]&1))==(pg['trigger'],pg['priorityType'],pg['through'])
    if ref:
@@ -51,7 +52,7 @@ for mid in (*range(79,105),*range(111,140)):
    page_count+=1
 # Post-credits commands, inventory cleanup and house entry are fully original.
 original=w.read_json(G/'data/Map079.json');raw=(O/'map079_vm.bin').read_bytes();blob=struct.unpack_from('<I',raw,8)[0]
-pg=original['events'][1]['pages'][0];assert raw[blob:]==w.compile_vm_commands(pg,texts,True)
+pg=original['events'][1]['pages'][0];assert raw[blob:]==styled(79,1,0,w.compile_vm_commands(pg,texts,True))
 assert any(c['code']==129 and c['parameters']==[7,0,False]for c in pg['list'])
 assert any(c['code']==201 and c['parameters']==[0,83,14,3,0,0]for c in pg['list'])
 # NPC walking sheets and actor7 keep native dimensions and pixels.

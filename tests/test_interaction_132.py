@@ -14,7 +14,7 @@ pre='''#include <stdint.h>
 #define MAX_MAP_ID 139
 #define VM_EVENT_BYTES 10
 #define VM_PAGE_BYTES 20
-typedef struct{int id,vm_event_count,vm_page_count;uint8_t*vm_bin;const uint8_t*vm_events,*vm_pages;}MapState;
+typedef struct{int id,vm_event_count,vm_page_count;uint8_t*vm_bin;const uint8_t*vm_events,*vm_pages;int w;}MapState;
 typedef struct{int event_id,x,y,first_page,page_count;}VmEventRecord;
 typedef struct{int cond_flags,trigger,priority,flags,switch1,switch2,self_index,supported,sprite_ref;uint32_t cmd_offset,cmd_size;}VmPageRecord;
 typedef struct{void*records;int remaining,dx,dy;float start_x,start_y;}EventRoute;
@@ -35,6 +35,7 @@ assert(!vm_find_event_at(&m,4,4,-2,&e,&p));
 assert(vm_event_blocks_at(&m,5,3));g_switches[288]=1;
 assert(vm_event_blocks_at(&m,5,3));assert(!vm_find_event_at(&m,5,3,-3,&e,&p));
 g_switches[288]=0;assert(vm_find_event_at(&m,5,3,-3,&e,&p));return 0;}'''
+pre+=(r/'runtime/render_boundaries.h').read_text().split('static int spider_entrance_contact(')[1].split('/* Cosmetic cinematic')[0].join(['static int spider_entrance_contact(',''])
 with tempfile.TemporaryDirectory()as td:
  p=Path(td)/'t.c';e=Path(td)/'t';p.write_text(pre+s[a:b]+post);subprocess.run(['cc','-std=c99',str(p),'-o',str(e)],check=True);subprocess.run([str(e),str(r/'assets/map037_vm.bin')],check=True)
 # Ensure the player action dispatcher applies the filters tested above.

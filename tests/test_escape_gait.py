@@ -25,6 +25,7 @@ static int is_chase_enemy(int m,int id){return (m==32&&id==23);}
 static int is_spider_enemy(int m,int id){return (m==67&&id>=1&&id<=4)||(m==68&&id==2);}
 
 static float render_floor_pixel(float x){return (int)x;}
+static float clamp_float(float v,float lo,float hi){return v<lo?lo:(v>hi?hi:v);}
 static void bind_texture_8888(void*p,int w,int h){bound=p;}
 static void sceGuTexFilter(int a,int b){filter=a;}
 static void sceGuTexFunc(int a,int b){}

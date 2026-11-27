@@ -23,10 +23,13 @@ pre="""#include <assert.h>
 #define GU_NEAREST 0
 static int g_runtime_message_active=1,g_runtime_message_openness=255,g_window_opacity=255;
 static int g_runtime_message_transparent,g_runtime_message_surface_ready,frames,texts;
+static int g_runtime_message_background,dims;
+static void draw_solid_rect(float x,float y,float w,float h,int r,int g,int b,int a){dims++;}
 static void *g_runtime_message_surface;
 static const char *g_runtime_speaker,*g_runtime_message="END 1/7 No Salvation";
 static size_t g_runtime_speaker_len,g_runtime_message_len=20;
 static int runtime_speaker_width(void){return 60;}
+static float runtime_name_y(void){return 180;}
 static int runtime_message_text_y(void){return 218;}
 static void draw_message_window_reveal(float x,float y,float w,float h,int a){frames++;}
 static void bind_texture_8888(){}
@@ -41,6 +44,7 @@ g_runtime_message_transparent=1;draw_runtime_message_overlay();assert(frames==0&
 frames=texts=0;g_runtime_message_transparent=0;draw_runtime_message_overlay();assert(frames==1&&texts==1);
 frames=texts=0;g_runtime_speaker="Enri";g_runtime_speaker_len=4;draw_runtime_message_overlay();assert(frames==2&&texts==2);
 frames=texts=0;g_runtime_message_transparent=1;g_runtime_message_surface_ready=1;g_runtime_message_surface=(void*)1;draw_runtime_message_overlay();assert(frames==0&&texts==1);
+frames=texts=dims=0;g_runtime_message_transparent=0;g_runtime_message_background=1;draw_runtime_message_overlay();assert(frames==0&&dims==1&&texts==1);
 return 0;}
 """
 with tempfile.TemporaryDirectory() as d:

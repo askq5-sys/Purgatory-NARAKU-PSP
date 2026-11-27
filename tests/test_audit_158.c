@@ -25,9 +25,11 @@ int main(void) {
  for(int mid=1;mid<=139;++mid)for(int xi=0;xi<17;++xi)for(int yi=0;yi<25;++yi){
   float wx=(xi+.5f)*24,wy=(yi+1.f)*24;
   int active=mid==105 && wx>=1.5f*24 && wx<=3.5f*24 && wy<=20.f*24;
+  /* Gallery north exit (Map114), added after this audit: clip at one tile. */
+  int gallery=mid==114 && wx>=14.f*24 && wx<=15.f*24 && wy<=3.f*24;
   for(int cam=-20;cam<900;cam+=13){
-   int expected=active?(int)floorf(7.3f+16.f*24-cam):-1;
-   if(active){if(expected<0)expected=0;if(expected>272)expected=272;}
+   int expected=gallery?(int)floorf(7.3f+24-cam):active?(int)floorf(7.3f+16.f*24-cam):-1;
+   if(active||gallery){if(expected<0)expected=0;if(expected>272)expected=272;}
    assert(secret_ladder_clip_top(mid,wx,wy,24,7.3f,cam,272)==expected);
   }
  }

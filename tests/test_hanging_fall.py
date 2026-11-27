@@ -1,16 +1,16 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
 from pathlib import Path
 import struct,json,sys
 from PIL import Image
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-key=bytes.fromhex(json.load(open(r.parent/'original/data/System.json'))['encryptionKey'])
-src=w.load_encrypted_png(w.resolve_named_file(r.parent/'original/img/characters','!吊るしエンリ'),key)
+key=bytes.fromhex(json.load(open(original_dir(r)/'data/System.json'))['encryptionKey'])
+src=w.load_encrypted_png(w.resolve_named_file(original_dir(r)/'img/characters','!吊るしエンリ'),key)
 for mid in (21,23,27):
  raw=(r/'assets'/f'map{mid:03d}_events.bin').read_bytes();_,mw,mh,nt,ns,_=struct.unpack_from('<4s5H',raw);off=14+mw*mh*5+nt*20
  records=[struct.unpack_from('<6H2BH',raw,off+i*16)for i in range(ns)]
- data=json.load(open(r.parent/f'original/data/Map{mid:03d}.json'));atlases=[Image.frombytes('RGBA',(512,512),(r/'assets'/f'map{mid:03d}_event_atlas.rgba8888').read_bytes())];
+ data=json.load(open(original_dir(r)/f'data/Map{mid:03d}.json'));atlases=[Image.frombytes('RGBA',(512,512),(r/'assets'/f'map{mid:03d}_event_atlas.rgba8888').read_bytes())];
  if (r/'assets'/f'map{mid:03d}_event_atlas1.rgba8888').exists():atlases.append(Image.frombytes('RGBA',(512,512),(r/'assets'/f'map{mid:03d}_event_atlas1.rgba8888').read_bytes()))
  idx=0
  for ev in data['events']:

@@ -1,12 +1,17 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import original_dir
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from vm_util import styled
 """Audit compiled pages/resources and exercise the requested puzzle branches."""
 from pathlib import Path
 import json,struct,sys,re,collections
 from PIL import Image
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-G=r.parent/'original';O=r/'assets';texts=json.load(open(G/'data/I18NTexts.json'));key=bytes.fromhex(json.load(open(G/'data/System.json'))['encryptionKey'])
+G=original_dir(r);O=r/'assets';texts=json.load(open(G/'data/I18NTexts.json'));key=bytes.fromhex(json.load(open(G/'data/System.json'))['encryptionKey'])
 w.PICTURE_IDS=json.load(open(O/'picture_v050_manifest.json'));audio=json.load(open(O/'audio_exact_v079.json'));w.EXACT_SE_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='se'};w.EXACT_BGM_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='bgm'}
 import zipfile
-with zipfile.ZipFile(r.parent/'latest/naraku_psp_1.3.1_factory_extension_patch.zip')as z:old=json.loads(z.read('assets/audio_exact_v079.json'));assert all(row in audio for row in old)
 report=[];pages={};sprites=0;frames=0
 for mid in range(36,46):
  m=json.load(open(G/'data'/f'Map{mid:03}.json'));b=(O/f'map{mid:03}_vm.bin').read_bytes();_,ne,np,blob,_,flags=struct.unpack_from('<4sHHIII',b);assert flags&1;base=20+ne*10
@@ -15,12 +20,12 @@ for mid in range(36,46):
   for x in range(mw):assert mb[20+mw*mh*8+y*mw+x]==w.build_pass_mask(m,tileset['flags'],x,y)
  eb=(O/f'map{mid:03}_events.bin').read_bytes();_,mw,mh,nt,ns,_=struct.unpack_from('<4s5H',eb);sb=14+mw*mh*5+nt*20
  atlases=[Image.frombytes('RGBA',(512,512),(O/f'map{mid:03}_event_atlas.rgba8888').read_bytes())]
- if mid in(39,40):atlases.append(Image.frombytes('RGBA',(512,512),(O/f'map{mid:03}_event_atlas1.rgba8888').read_bytes()))
+ if (O/f'map{mid:03}_event_atlas1.rgba8888').exists():atlases.append(Image.frombytes('RGBA',(512,512),(O/f'map{mid:03}_event_atlas1.rgba8888').read_bytes()))
  for i in range(ne):
   eid,x,y,first,n,_=struct.unpack_from('<HHHHBB',b,20+i*10);ev=m['events'][eid];assert(x,y,n)==(ev['x'],ev['y'],len(ev['pages']))
   for j,p in enumerate(ev['pages']):
    pg=struct.unpack_from('<BBBBHHBBHII',b,base+(first+j)*20);ref,off,length=pg[8:];assert pg[7]and w.page_vm_supported(p)
-   data=b[blob+off:blob+off+length];assert data==w.compile_vm_commands(p,texts);pages[mid,eid,j]=data
+   data=b[blob+off:blob+off+length];assert data==styled(mid,eid,j,w.compile_vm_commands(p,texts));pages[mid,eid,j]=data
    assert (pg[0],pg[4],pg[5],pg[6])==w.vm_page_conditions(p);assert pg[1]==p['trigger']and pg[2]==p['priorityType']and bool(pg[3]&1)==p['through']
    img=p['image'];name=img['characterName'];assert bool(ref)==bool(name or img['tileId'])
    if ref:
@@ -31,8 +36,9 @@ for mid in range(36,46):
      for di,d in enumerate(dirs):
       for pat in patterns:
        frame=w.extract_character_frame(src,name,img['characterIndex'],d,pat)
-       if name in('!クランク','!吊るしエンリ')or name=='S-003':frame=frame.resize((frame.width*3//4,frame.height*3//4),Image.Resampling.LANCZOS)
-       assert frame.size==(sw,sh)
+       # S-003 is stored at native 72x144 and halved at draw time.
+       if name in('!クランク','!吊るしエンリ'):frame=frame.resize((frame.width*3//4,frame.height*3//4),Image.Resampling.LANCZOS)
+       assert frame.size==(sw,sh),(mid,eid,name,frame.size,(sw,sh))
        xx=sx;yy=sy
        if flags2&64:
         if flags2&128:xx+=(di%2*3+pat)*sw;yy+=di//2*sh

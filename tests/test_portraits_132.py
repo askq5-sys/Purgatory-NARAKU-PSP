@@ -1,11 +1,11 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile
 import numpy as np
 from PIL import Image
-r=Path(__file__).resolve().parents[1];O=r/'assets';G=r.parent/'original';sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
+r=Path(__file__).resolve().parents[1];O=r/'assets';G=original_dir(r);sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
 key=bytes.fromhex(json.load(open(G/'data/System.json'))['encryptionKey']);rows=json.load(open(O/'portraits_v132.json'))
 for row in rows:
  b=(O/f'pic_{row["id"]:03}.p44').read_bytes();header=struct.unpack_from('<4s8H',b);magic,tw,th,cw,ch,x,y,bw,bh=header
@@ -40,8 +40,9 @@ pre='''#include <stdint.h>
 #define GU_DST_COLOR 10
 #define GU_ONE_MINUS_SRC_ALPHA 11
 #define GU_ONE_MINUS_SRC_COLOR 12
-static int g_picture6_alpha,g_picture6_visible;static unsigned char g_switches[1601];
+static int g_picture6_alpha,g_picture6_visible,g_language;static unsigned char g_switches[1601];
 static float ux,uy,uw,uh,dx,dy,dw,dh;static int filter,draws;
+static void draw_solid_rect(float x,float y,float w,float h,int r,int g,int b,int a){}
 static uint16_t read_u16_le(const unsigned char*p){return p[0]|p[1]<<8;}
 static void*memalign(int a,size_t n){return malloc(n);}
 static void sceKernelDcacheWritebackInvalidateAll(void){}
@@ -55,9 +56,9 @@ static void sceGuColor(unsigned int a){}
 static void draw_bound_rect(float x,float y,float w,float h,float xx,float yy,float ww,float hh){ux=x;uy=y;uw=w;uh=h;dx=xx;dy=yy;dw=ww;dh=hh;draws++;}
 '''+ '#define ASSET_ROOT '+json.dumps(str(O.resolve())+'/')+'\n'
 post='''int main(void){picture_show(8,18,0,0,0,100,100,255);PictureSlot*p=picture_slot(8);assert(p&&p->texture&&p->portrait&&p->w==408&&p->h==312&&!p->fit_screen);
-draw_vm_pictures(0);assert(filter==GU_LINEAR&&ux==1&&uy==1&&uw==p->source_w&&uh==p->source_h);assert(dx==36+p->picture_offset_x&&dy==-20+p->picture_offset_y&&dw==p->picture_region_w&&dh==p->picture_region_h);
-p->number=11;p->origin=1;p->scale_x=p->scale_y=50;draw_vm_pictures(0);assert(dw==p->picture_region_w*.5f&&dh==p->picture_region_h*.5f);assert(dx==36-102+p->picture_offset_x*.5f&&dy==-20-78+p->picture_offset_y*.5f);erase_picture_slot(11);
-picture_show(8,93,0,0,0,100,100,255);p=picture_slot(8);assert(p->texture&&!p->portrait&&p->fit_screen);draw_vm_pictures(0);assert(dx==0&&dy==0&&dw==480&&dh==272&&ux==0);erase_picture_slot(8);return 0;}'''
+draw_vm_pictures(0,0);assert(filter==GU_LINEAR&&ux==1&&uy==1&&uw==p->source_w&&uh==p->source_h);assert(dx==36+p->picture_offset_x&&dy==-20+p->picture_offset_y&&dw==p->picture_region_w&&dh==p->picture_region_h);
+p->number=11;p->origin=1;p->scale_x=p->scale_y=50;draw_vm_pictures(0,0);assert(dw==p->picture_region_w*.5f&&dh==p->picture_region_h*.5f);assert(dx==36-102+p->picture_offset_x*.5f&&dy==-20-78+p->picture_offset_y*.5f);erase_picture_slot(11);
+picture_show(8,93,0,0,0,100,100,255);p=picture_slot(8);assert(p->texture&&!p->portrait&&p->fit_screen);draw_vm_pictures(0,0);assert(dx==0&&dy==0&&dw==480&&dh==272&&ux==0);erase_picture_slot(8);return 0;}'''
 with tempfile.TemporaryDirectory()as td:
  p=Path(td)/'t.c';e=Path(td)/'t';p.write_text(pre+types+loader+drawing+post);subprocess.run(['cc','-std=c99',str(p),'-lm','-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 print(f'PASS: {len(rows)} portrait alpha crops/native texels/geometry; actual new/legacy picture loader, linear draw, origin/zoom and game-over fitting; fixed 512KiB texture memory')

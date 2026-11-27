@@ -30,3 +30,17 @@ def _expand(text, runtime):
 def main_source(root):
     root = Path(root)
     return _expand((root / 'main.c').read_text(), root / 'runtime')
+
+
+def original_dir(root):
+    """Folder with the PC game's data/ and img/.
+
+    Looked up in $NARAKU_ORIGINAL, then original/ inside the repository,
+    then original/ next to it.
+    """
+    import os
+    root = Path(root)
+    for candidate in (os.environ.get('NARAKU_ORIGINAL'), root / 'original', root.parent / 'original'):
+        if candidate and (Path(candidate) / 'data' / 'System.json').exists():
+            return Path(candidate)
+    raise FileNotFoundError('PC game data not found: set NARAKU_ORIGINAL or put it in original/')

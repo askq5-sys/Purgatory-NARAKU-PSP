@@ -1,10 +1,11 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
+from vm_util import styled
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile,runpy
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-T=json.load(open(r.parent/'original/data/I18NTexts.json'));w.PICTURE_IDS=json.load(open(r.parent/'port/assets/picture_v050_manifest.json'));audio=json.load(open(r/'assets/audio_exact_v079.json'));w.EXACT_SE_IDS={w.audio_key(x):int(x['id'])for x in audio if x['kind']=='se'};w.EXACT_BGM_IDS={w.audio_key(x):int(x['id'])for x in audio if x['kind']=='bgm'}
+T=json.load(open(original_dir(r)/'data/I18NTexts.json'));w.PICTURE_IDS=json.load(open(r/'assets/picture_v050_manifest.json'));audio=json.load(open(r/'assets/audio_exact_v079.json'));w.EXACT_SE_IDS={w.audio_key(x):int(x['id'])for x in audio if x['kind']=='se'};w.EXACT_BGM_IDS={w.audio_key(x):int(x['id'])for x in audio if x['kind']=='bgm'}
 report=[]
 for mid in range(14,32):
  path=r/'assets'/f'map{mid:03d}_vm.bin'
@@ -16,7 +17,7 @@ for mid in range(14,32):
   for j in range(n):
    if b[base+(first+j)*20+9]==0:unsupported.append((eid,j))
  assert unsupported==([(12,0)]if mid==24 else [])
- source=json.load(open(r.parent/f'original/data/Map{mid:03d}.json'))
+ source=json.load(open(original_dir(r)/f'data/Map{mid:03d}.json'))
  for i in range(ne):
   eid,x,y,first,n,_=struct.unpack_from('<HHHHBB',b,20+i*10)
   for j,page in enumerate(source['events'][eid]['pages']):
@@ -25,12 +26,12 @@ for mid in range(14,32):
 
  report.append({'map':mid,'pages':np,'compiled':np-len(unsupported),'special_runtime': 'press cycle'if mid==24 else None})
  if mid<28:continue
- m=json.load(open(r.parent/f'original/data/Map{mid:03d}.json'));assert flags&1
+ m=json.load(open(original_dir(r)/f'data/Map{mid:03d}.json'));assert flags&1
  for i in range(ne):
   eid,x,y,first,n,_=struct.unpack_from('<HHHHBB',b,20+i*10);ev=m['events'][eid];assert(x,y,n)==(ev['x'],ev['y'],len(ev['pages']))
   for j,p in enumerate(ev['pages']):
    pg=struct.unpack_from('<BBBBHHBBHII',b,base+(first+j)*20);ref,off,length=pg[8:];assert pg[7]
-   assert b[blob+off:blob+off+length]==w.compile_vm_commands(p,T)
+   assert b[blob+off:blob+off+length]==styled(mid,eid,j,w.compile_vm_commands(p,T))
    for c in p['list']:
     if c['code']==231 and c['parameters'][1]!='A1':assert (r/'assets'/f"pic_{w.PICTURE_IDS[c['parameters'][1]]:03d}.p44").is_file()
     if c['code']in(241,250):
@@ -38,9 +39,9 @@ for mid in range(14,32):
      if a['name']:
       kind='bgm'if c['code']==241 else'se';aid=(w.EXACT_BGM_IDS if kind=='bgm'else w.EXACT_SE_IDS)[w.audio_key(a)];assert(r/'assets'/f'{kind}_exact_{aid}.pcm').stat().st_size
 # Both corridor and flashback have original one-shot switch gates.
-m=json.load(open(r.parent/'original/data/Map029.json'))
+m=json.load(open(original_dir(r)/'data/Map029.json'))
 assert all(e['pages'][1]['conditions']['switch1Id']==246 for e in m['events'][1:6])
-m=json.load(open(r.parent/'original/data/Map030.json'));assert m['events'][10]['pages'][1]['conditions']['switch1Id']==247
+m=json.load(open(original_dir(r)/'data/Map030.json'));assert m['events'][10]['pages'][1]['conditions']['switch1Id']==247
 b=(r/'assets/map030_events.bin').read_bytes();_,mw,mh,nt,ns,_=struct.unpack_from('<4s5H',b);off=14+mw*mh*5+nt*20
 for i in range(ns):
  rec=struct.unpack_from('<6H2BH',b,off+i*16);sx,sy,sw,sh=rec[2:6];flags=rec[7]

@@ -1,5 +1,8 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import original_dir
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from source_util import main_source
 from pathlib import Path
 import json,struct,subprocess,tempfile
@@ -20,7 +23,7 @@ with tempfile.TemporaryDirectory()as tmp:
  p=Path(tmp)/'t.c';exe=Path(tmp)/'t';p.write_text(pre+s[a:b]+post);subprocess.run(['cc','-I',str(root),str(p),'-o',str(exe)],check=True);subprocess.run([str(exe)],check=True)
 rows=json.load(open(root/'assets/audio_exact_v079.json'));ids={(x['name'],x['volume'],x['pitch'],x['pan']):x['id']for x in rows if x['kind']=='se'}
 for mid,eid,pi in [(24,3,5),(25,3,1),(27,2,0)]:
- original=json.load(open(root.parent/('original/data/Map%03d.json'%mid)))['events'][eid]['pages'][pi]
+ original=json.load(open(original_dir(root)/('data/Map%03d.json'%mid)))['events'][eid]['pages'][pi]
  raw=(root/'assets'/('map%03d_vm.bin'%mid)).read_bytes()
  for c in original['list']:
   if c['code']==250:

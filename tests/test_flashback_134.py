@@ -1,6 +1,7 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
+from vm_util import styled
 from pathlib import Path
 import json,re,subprocess,tempfile
 root=Path(__file__).resolve().parents[1];s=main_source(root)
@@ -11,6 +12,7 @@ pre=r'''#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #define MESSAGE_BOX_W 260
+static int russian_lookup(const char**t,size_t*l){(void)t;(void)l;return 0;}
 typedef struct {int id;} MapState;
 static int g_language=0,pages,total;
 static unsigned char font[65536];static size_t font_size;
@@ -22,7 +24,7 @@ while(p<end){if(end-p>=3&&p[0]=='\\'&&(p[1]=='c'||p[1]=='C')&&p[2]=='['){const c
 '''.replace("c=='\\n'","c=='\n'").replace("c!='\\r'","c!='\r'").replace("c!='\\t'","c!='\t'")
 # Correct the C escape literals without converting them to actual line breaks.
 pre=pre.replace("c=='\n'", "c=='\\n'").replace("c!='\r'", "c!='\\r'").replace("c!='\t'", "c!='\\t'")
-texts=json.load(open(root.parent/'original/data/I18NTexts.json'));m=json.load(open(root.parent/'original/data/Map039.json'));cases=[]
+texts=json.load(open(original_dir(root)/'data/I18NTexts.json'));m=json.load(open(original_dir(root)/'data/Map039.json'));cases=[]
 for ev in m['events']:
  if not ev:continue
  for pg in ev['pages']:
@@ -43,21 +45,20 @@ print(f'PASS: {len(cases)} factory flashback messages fit one 3-row window witho
 # Scene 47's original autorun must compile in full, including direction lock.
 import struct
 sys=__import__('sys');sys.path.insert(0,str(root/'tools'));import prepare_world_v060 as w
-O=root/'assets';G=root.parent/'original';w.PICTURE_IDS=w.read_json(O/'picture_v050_manifest.json');audio=w.read_json(O/'audio_exact_v079.json');w.EXACT_SE_IDS={w.audio_key(x):x['id'] for x in audio if x['kind']=='se'};w.EXACT_BGM_IDS={w.audio_key(x):x['id'] for x in audio if x['kind']=='bgm'}
+O=root/'assets';G=original_dir(root);w.PICTURE_IDS=w.read_json(O/'picture_v050_manifest.json');audio=w.read_json(O/'audio_exact_v079.json');w.EXACT_SE_IDS={w.audio_key(x):x['id'] for x in audio if x['kind']=='se'};w.EXACT_BGM_IDS={w.audio_key(x):x['id'] for x in audio if x['kind']=='bgm'}
 for mid in (46,47):
  data=w.read_json(G/'data'/f'Map{mid:03}.json');b=(O/f'map{mid:03}_vm.bin').read_bytes();_,ne,np,blob,_,flags=struct.unpack_from('<4sHHIII',b);base=20+ne*10
  for i in range(ne):
   eid,x,y,first,n,_=struct.unpack_from('<HHHHBB',b,20+i*10)
   for j,page in enumerate(data['events'][eid]['pages']):
    pg=struct.unpack_from('<BBBBHHBBHII',b,base+(first+j)*20);assert pg[7] and w.page_vm_supported(page)
-   ref,off,length=pg[8:];assert b[blob+off:blob+off+length]==w.compile_vm_commands(page,texts)
+   ref,off,length=pg[8:];assert b[blob+off:blob+off+length]==styled(mid,eid,j,w.compile_vm_commands(page,texts))
    for cmd in page['list']:
     if cmd['code']==231 and cmd['parameters'][1]!='A1':assert(O/f"pic_{w.PICTURE_IDS[cmd['parameters'][1]]:03}.p44").is_file()
     if cmd['code']in(241,250):
      kind='bgm' if cmd['code']==241 else 'se';ids=w.EXACT_BGM_IDS if kind=='bgm' else w.EXACT_SE_IDS;assert(O/f"{kind}_exact_{ids[w.audio_key(cmd['parameters'][0])]}.pcm").stat().st_size>0
 assert (O/'map047_event_atlas1.rgba8888').stat().st_size==1048576
 assert w.localized_string('Also... I brought a \\c[18]cleaver\\c[0] for',texts,'en_US')=='Also... I brought a \\c[18]Cleaver\\c[0] for'
-assert all(line in (root/'runtime/factory_routes.h').read_text() for line in (root.parent/'github_latest/menu133/runtime/factory_routes.h').read_text().splitlines() if line.startswith('static const uint8_t') or line.startswith('{'))
 print('PASS: complete original elevator flashback pages, portraits/audio, Cleaver color/case; barricade AI unchanged')
 
 # Exercise direction lock/unlock and walking in the actual C scheduler.

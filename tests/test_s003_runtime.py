@@ -15,6 +15,7 @@ pre=r'''#include <stdint.h>
 #include "runtime/laser_chase_trail.h"
 #define MAX_EVENT_ID 160
 #define TILE_PX 24
+static uint8_t g_switches[1601];
 static const char*g_scene_trace_path="/dev/null";
 typedef struct {int id,vm_event_count;} MapState;
 typedef struct {int event_id,x,y,first_page;} VmEventRecord;
@@ -27,6 +28,7 @@ static int pass_mask_at(const MapState*m,int x,int y){return blocked_axis && x==
 static int vm_event_blocks_except(const MapState*m,int x,int y,int id){return 0;}
 static void play_vm_se_params(int a,int b,int c,int d){}
 '''
+pre+=s[s.index('static int is_chase_enemy('):s.index('static int is_spider_enemy(')]
 post='int main(void){'
 for mid,local in [(24,5),(25,1)]:
  raw=(r/'assets'/f'map{mid:03d}_vm.bin').read_bytes();ne=struct.unpack_from('<H',raw,4)[0]

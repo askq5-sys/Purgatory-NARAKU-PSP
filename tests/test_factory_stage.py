@@ -1,20 +1,21 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
+from vm_util import styled
 from pathlib import Path
 import json,struct,sys,runpy,subprocess,tempfile
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-w.PICTURE_IDS=json.load(open(r.parent/'port/assets/picture_v050_manifest.json'));audio=json.load(open(r/'assets/audio_exact_v079.json'));w.EXACT_SE_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='se'};w.EXACT_BGM_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='bgm'};texts=json.load(open(r.parent/'original/data/I18NTexts.json'))
+w.PICTURE_IDS=json.load(open(r/'assets/picture_v050_manifest.json'));audio=json.load(open(r/'assets/audio_exact_v079.json'));w.EXACT_SE_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='se'};w.EXACT_BGM_IDS={w.audio_key(x):x['id']for x in audio if x['kind']=='bgm'};texts=json.load(open(original_dir(r)/'data/I18NTexts.json'))
 report=[]
 for mid in range(32,36):
- m=json.load(open(r.parent/f'original/data/Map{mid:03}.json'));b=(r/'assets'/f'map{mid:03}_vm.bin').read_bytes();_,ne,np,blob,_,_=struct.unpack_from('<4sHHIII',b);base=20+ne*10
+ m=json.load(open(original_dir(r)/f'data/Map{mid:03}.json'));b=(r/'assets'/f'map{mid:03}_vm.bin').read_bytes();_,ne,np,blob,_,_=struct.unpack_from('<4sHHIII',b);base=20+ne*10
  eb=(r/'assets'/f'map{mid:03}_events.bin').read_bytes();_,mw,mh,nt,ns,_=struct.unpack_from('<4s5H',eb);sb=14+mw*mh*5+nt*20;records=[struct.unpack_from('<6H2BH',eb,sb+i*16)for i in range(ns)]
  for i in range(ne):
   eid,x,y,first,n,_=struct.unpack_from('<HHHHBB',b,20+i*10)
   for j,page in enumerate(m['events'][eid]['pages']):
    pg=struct.unpack_from('<BBBBHHBBHII',b,base+(first+j)*20);ref,off,length=pg[8:]
    assert pg[7]==int(not(mid==32 and eid==20 and j==1))
-   if pg[7]:assert b[blob+off:blob+off+length]==w.compile_vm_commands(page,texts)
+   if pg[7]:assert b[blob+off:blob+off+length]==styled(mid,eid,j,w.compile_vm_commands(page,texts))
    visible=bool(page['image']['characterName']or page['image']['tileId']);assert bool(ref)==visible
    if ref:
     rec=records[ref-1];assert rec[-1]==eid;sx,sy,sw,sh=rec[2:6];page_index=sx>>12;sx&=0xFFF;assert page_index in (0,1)and (page_index==0 or mid==32);flags=rec[7]
@@ -29,7 +30,7 @@ for mid in range(32,36):
 h=(r/'runtime/factory_routes.h').read_text()
 import re
 for mid in range(32,35):
- m=json.load(open(r.parent/f'original/data/Map{mid:03}.json'))
+ m=json.load(open(original_dir(r)/f'data/Map{mid:03}.json'))
  for e in m['events']:
   if not e:continue
   for j,p in enumerate(e['pages']):
@@ -40,7 +41,7 @@ for mid in range(32,35):
 # Exercise new scheduler and machine parallel pages using actual runtime C.
 s=main_source(r);n=runpy.run_path(str(r/'tests/test_s003_runtime.py'));pre=n['pre'];glob=n['globals_']
 pre=pre.replace('static int first,active,blocked_axis;','static int first,active,blocked_axis,test_id=3;').replace('{3,6,8,first}','{test_id,6,8,first}')
-pre=pre.replace('static void play_vm_se_params(int a,int b,int c,int d){}','static int sounds;static void play_vm_se_params(int a,int b,int c,int d){++sounds;}\nstatic void vm_begin_screen_flash(int a,int b,int c,int d,int f){}\nstatic unsigned char g_switches[1024];')
+pre=pre.replace('static void play_vm_se_params(int a,int b,int c,int d){}','static int sounds;static void play_vm_se_params(int a,int b,int c,int d){++sounds;}\nstatic void vm_begin_screen_flash(int a,int b,int c,int d,int f){}\n')
 a=s.index('static int event_route_can_step(');b=s.index('static void tick_player_route(',a);engine=s[a:b]
 a=s.index('static void tick_factory_parallel(');b=s.index('#include "runtime/stage_parallel.h"',a);parallel=s[a:b]
 post='''int main(void){MapState m={32,1};test_id=23;first=7;active=first+1;g_s003_paused=0;
@@ -60,7 +61,7 @@ return 0;}'''
 with tempfile.TemporaryDirectory()as tmp:
  p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(pre+glob+engine+parallel+post);subprocess.run(['cc','-std=c99','-I',str(r),str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 # Room centering: source passage is x7, i.e. foot centre x7.5, not map x8.5.
-a=s.index('static void compute_camera(');b=s.index('static void draw_map_slot_local(',a)
+a=s.index('static void compute_camera(');b=s.index('static void draw_character_frame(',a)
 pre='''#include <assert.h>
 #define SCREEN_W 480
 #define SCREEN_H 272

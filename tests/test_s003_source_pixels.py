@@ -1,9 +1,12 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import original_dir
 from pathlib import Path
 import struct,json,sys
 from PIL import Image
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-key=bytes.fromhex(json.load(open(r.parent/'original/data/System.json'))['encryptionKey'])
-src=w.load_encrypted_png(w.resolve_named_file(r.parent/'original/img/characters','!S-003'),key)
+key=bytes.fromhex(json.load(open(original_dir(r)/'data/System.json'))['encryptionKey'])
+src=w.load_encrypted_png(w.resolve_named_file(original_dir(r)/'img/characters','!S-003'),key)
 for mid in (24,25):
  raw=(r/'assets'/f'map{mid:03d}_events.bin').read_bytes();_,mw,mh,nt,ns,_=struct.unpack_from('<4s5H',raw);off=14+mw*mh*5+nt*20
  atlas=Image.frombytes('RGBA',(512,512),(r/'assets'/f'map{mid:03d}_event_atlas.rgba8888').read_bytes())

@@ -1,11 +1,11 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
 from pathlib import Path
 import json,re,struct
 r=Path(__file__).resolve().parents[1]
 for mid,page in [(24,5),(25,1)]:
- original=json.load(open(r.parent/f'original/data/Map{mid:03d}.json'))['events'][3]['pages'][page]['moveRoute']['list']
+ original=json.load(open(original_dir(r)/f'data/Map{mid:03d}.json'))['events'][3]['pages'][page]['moveRoute']['list']
  expected=b''.join(struct.pack('<Bhh',c['code'],(c.get('parameters')or[0])[0],0)for c in original if c['code'])
  h=(r/'runtime/s003_routes.h').read_text();got=bytes(map(int,re.search(r's003_route_'+str(mid)+r'\[\] = \{([^}]+)',h)[1].split(',')));assert got==expected
  raw=(r/'assets'/f'map{mid:03d}_events.bin').read_bytes();_,w,h,nt,ns,_=struct.unpack_from('<4s5H',raw);base=14+w*h*5+nt*struct.calcsize("<HHHBBHBBHBBHBB")

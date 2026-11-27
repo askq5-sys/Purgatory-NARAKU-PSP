@@ -16,3 +16,6 @@ __pycache__/
 *.sav
 *.sfo
 .DS_Store
+
+# Reports written by the full test run
+/audit_*.json

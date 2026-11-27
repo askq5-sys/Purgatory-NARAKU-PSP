@@ -1,7 +1,10 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import original_dir
 from pathlib import Path
 import json,struct,sys
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-original=json.load(open(r.parent/'original/data/Map009.json'));before=json.dumps(original,sort_keys=True);data=w.adapt_plant1_worm(original)
+original=json.load(open(original_dir(r)/'data/Map009.json'));before=json.dumps(original,sort_keys=True);data=w.adapt_plant1_worm(original)
 assert json.dumps(original,sort_keys=True)==before
 wall=data['events'][4];floor=data['events'][15];scene=floor['pages'][1]
 assert (wall['x'],wall['y'])==(28,18)and(floor['x'],floor['y'])==(28,21)

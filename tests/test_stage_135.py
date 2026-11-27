@@ -1,11 +1,12 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
+from vm_util import styled
 from pathlib import Path
 import json, struct, sys, re, subprocess, tempfile
 from PIL import Image
 
-r=Path(__file__).resolve().parents[1];G=r.parent/'original';O=r/'assets'
+r=Path(__file__).resolve().parents[1];G=original_dir(r);O=r/'assets'
 sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
 texts=w.read_json(G/'data/I18NTexts.json');key=bytes.fromhex(w.read_json(G/'data/System.json')['encryptionKey'])
 w.PICTURE_IDS=w.read_json(O/'picture_v050_manifest.json');audio=w.read_json(O/'audio_exact_v079.json')
@@ -26,7 +27,7 @@ for mid in range(48,74):
         for j,page in enumerate(event['pages']):
             pg=struct.unpack_from('<BBBBHHBBHII',b,base+(first+j)*20);ref,off,length=pg[8:]
             assert pg[7] and w.page_vm_supported(page)
-            assert b[blob+off:blob+off+length]==w.compile_vm_commands(page,texts,preserve_message_background=mid in (62,67,68,69,72))
+            assert b[blob+off:blob+off+length]==styled(mid,eid,j,w.compile_vm_commands(page,texts,preserve_message_background=mid in (62,67,68,69,72)))
             assert (pg[0]&7,pg[4],pg[5],pg[6])==w.vm_page_conditions(page)
             assert (pg[1],pg[2],bool(pg[3]&1))==(page['trigger'],page['priorityType'],page['through'])
             if ref:

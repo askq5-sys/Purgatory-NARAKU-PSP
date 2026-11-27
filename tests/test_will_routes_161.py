@@ -1,10 +1,10 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
 from pathlib import Path
 import re,struct,sys,tempfile,subprocess
 from PIL import Image
-r=Path(__file__).resolve().parents[1];g=r.parent/'original'
+r=Path(__file__).resolve().parents[1];g=original_dir(r)
 sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
 header=(r/'runtime/factory_routes.h').read_text()
 mp=w.read_json(g/'data/Map095.json');routes=0

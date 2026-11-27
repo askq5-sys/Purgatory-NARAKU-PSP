@@ -7,7 +7,7 @@ r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static int is_
 pre='''#include <stdint.h>
 #include <assert.h>
 #define MAX_EVENT_ID 160
-typedef struct {int id,vm_event_count;void*vm_bin;} MapState;
+typedef struct {int id,vm_event_count;void*vm_bin;int w;} MapState;
 typedef struct {int event_id,x,y;} VmEventRecord;
 typedef struct {int trigger,supported,priority,flags,cmd_size;} VmPageRecord;
 typedef struct {void*records;int remaining,dx,dy;float start_x,start_y;} EventRoute;
@@ -38,6 +38,7 @@ test_priority=0;assert(!vm_find_event_at(&m,5,7,-1,&e,&p));
 test_priority=1;test_supported=0;assert(!vm_find_event_at(&m,5,7,-1,&e,&p));
 test_supported=1;test_trigger=2;assert(!vm_find_event_at(&m,5,7,-1,&e,&p));
 return 0;}'''
+pre+=(r/'runtime/render_boundaries.h').read_text().split('static int spider_entrance_contact(')[1].split('/* Cosmetic cinematic')[0].join(['static int spider_entrance_contact(',''])
 with tempfile.TemporaryDirectory()as tmp:
  p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(pre+s[a:b]+post);subprocess.run(['cc','-std=c99',str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 assert 'vm_run_event_at(&map,nx,ny,2' in s

@@ -18,7 +18,7 @@ static void draw_bound_rect(float a,float b,float c,float d,float x,float y,floa
 '''
 for fn in ['sceGuTexMode','sceGuTexImage','sceGuTexFunc','sceGuTexFilter','sceGuBlendFunc','sceGuColor']:pre+=f'#define {fn}(...) ((void)0)\n'
 for name in set(re.findall(r'\bGU_[A-Z0-9_]+',s[a:b])):pre+=f'#define {name} 0\n'
-post=r'''int main(void){g_pictures[0]=(PictureSlot){.number=60,.resource_id=101,.w=408,.h=312,.opacity=255,.scale_x=100,.scale_y=100,.texture=(void*)1};draw_vm_pictures(0);assert(masked==1&&drawn==1&&sequence==2);sequence=masked=drawn=0;g_pictures[0].portrait=1;g_pictures[0].resource_id=40;draw_vm_pictures(0);assert(masked==0&&drawn==1);g_pictures[0].opacity=0;draw_vm_pictures(0);assert(masked==0&&drawn==1);return 0;}'''
+post=r'''int main(void){g_pictures[0]=(PictureSlot){.number=60,.resource_id=101,.w=408,.h=312,.opacity=255,.scale_x=100,.scale_y=100,.texture=(void*)1};draw_vm_pictures(0,0);assert(masked==1&&drawn==1&&sequence==2);sequence=masked=drawn=0;g_pictures[0].portrait=1;g_pictures[0].resource_id=40;draw_vm_pictures(0,0);assert(masked==0&&drawn==1);g_pictures[0].opacity=0;draw_vm_pictures(0,0);assert(masked==0&&drawn==1);return 0;}'''
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'note.c';e=Path(tmp)/'note';p.write_text(pre+s[a:b]+post);subprocess.run(['cc','-std=c99',str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
 print('PASS: C=5762 note masks the entire viewport before its picture; portraits and erased notes do not mask gameplay')

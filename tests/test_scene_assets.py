@@ -17,7 +17,7 @@ axe=records(13)[0]
 assert axe[8]==69 and axe[7]&4 and axe[7]&2
 # Three original-resolution cleaver frames exist within the atlas.
 assert axe[2]+axe[4]*3<=512 and axe[3]+axe[5]<=512
-s=main_source(root);a=s.index('static void compute_camera(');b=s.index('static void draw_map_slot_local',a)
+s=main_source(root);a=s.index('static void compute_camera(');b=s.index('static void draw_character_frame(',a)
 pre='''#include <assert.h>
 #define TILE_PX 24
 #define SCREEN_W 480

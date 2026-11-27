@@ -1,9 +1,12 @@
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from source_util import original_dir
 from pathlib import Path
 import sys, copy, struct
 r=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(r/'tools'))
 import prepare_world_v060 as w
-g=r.parent/'original'
+g=original_dir(r)
 d=w.read_json(g/'data/Map055.json')
 a=w.adapt_stage_142(d,55)
 assert a['events'][1]['pages'][:3]==d['events'][1]['pages']

@@ -47,8 +47,10 @@ static void *g_ui_char_atlas;
 static void ui_frame_begin(void){assert(++frames<5);}
 static void ui_frame_end(void){}
 static int ui_label_text(int k,int l,const char **p,size_t *n){return 0;}
-static int save_slot_metadata(int slot,int *m,int *x,int *y,uint32_t*t){return 0;}
+static int save_slot_metadata(int slot,int *m,int *x,int *y,uint32_t*t,int*actor){return 0;}
 static int save_slot_exists(int slot){return 0;}
+static void clear_save_previews(void){}
+static void *save_preview_texture(int actor){(void)actor;return NULL;}
 static int load_from_slot(int slot,ProgressState*p){return 0;}
 static uint32_t ui_ok_mask(void){return 1;}
 static uint32_t ui_cancel_mask(void){return 2;}

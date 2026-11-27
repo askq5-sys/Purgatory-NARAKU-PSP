@@ -1,6 +1,6 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
 from pathlib import Path
 import json,re,subprocess,tempfile
 root=Path(__file__).resolve().parents[1];s=main_source(root)
@@ -11,6 +11,7 @@ pre=r'''#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #define MESSAGE_BOX_W 260
+static int russian_lookup(const char**t,size_t*l){(void)t;(void)l;return 0;}
 typedef struct {int id;} MapState;
 static int g_language=0,pages,total;
 static unsigned char font[65536];static size_t font_size;
@@ -22,7 +23,7 @@ while(p<end){uint32_t c=utf8_next_cp(&p,end);if(c=='\n'){assert(width<=242);widt
 '''.replace("c=='\\n'","c=='\n'").replace("c!='\\r'","c!='\r'").replace("c!='\\t'","c!='\t'")
 # Correct the C escape literals without converting them to actual line breaks.
 pre=pre.replace("c=='\n'", "c=='\\n'").replace("c!='\r'", "c!='\\r'").replace("c!='\t'", "c!='\\t'")
-texts=json.load(open(root.parent/'original/data/I18NTexts.json'));m=json.load(open(root.parent/'original/data/Map012.json'));cases=[]
+texts=json.load(open(original_dir(root)/'data/I18NTexts.json'));m=json.load(open(original_dir(root)/'data/Map012.json'));cases=[]
 for ev in m['events']:
  if not ev:continue
  for pg in ev['pages']:

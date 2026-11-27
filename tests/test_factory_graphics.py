@@ -1,15 +1,15 @@
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-from source_util import main_source
+from source_util import main_source, original_dir
 from pathlib import Path
 import json,struct,sys,subprocess,tempfile
 from PIL import Image
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r/'tools'));import prepare_world_v060 as w
-system=json.load(open(r.parent/'original/data/System.json'));key=bytes.fromhex(system['encryptionKey']);tilesets=json.load(open(r.parent/'original/data/Tilesets.json'));counts={'native_frames':0,'collision_pages':0,'pass_cells':0,'filtered_tiles':0}
+system=json.load(open(original_dir(r)/'data/System.json'));key=bytes.fromhex(system['encryptionKey']);tilesets=json.load(open(original_dir(r)/'data/Tilesets.json'));counts={'native_frames':0,'collision_pages':0,'pass_cells':0,'filtered_tiles':0}
 for mid in range(32,36):
- m=json.load(open(r.parent/f'original/data/Map{mid:03}.json'));mw,mh=m['width'],m['height'];ts=tilesets[m['tilesetId']];bitmaps={}
+ m=json.load(open(original_dir(r)/f'data/Map{mid:03}.json'));mw,mh=m['width'],m['height'];ts=tilesets[m['tilesetId']];bitmaps={}
  for n,name in enumerate(ts['tilesetNames']):
-  if name:bitmaps[n]=w.load_encrypted_png(w.resolve_named_file(r.parent/'original/img/tilesets',name),key)
+  if name:bitmaps[n]=w.load_encrypted_png(w.resolve_named_file(original_dir(r)/'img/tilesets',name),key)
  mb=(r/'assets'/f'map{mid:03}.bin').read_bytes();slots={tid:i+1 for i,tid in enumerate(sorted(set(m['data'][:mw*mh*4])-{0}))}
  for i,tid in enumerate(m['data'][:mw*mh*4]):
   word=struct.unpack_from('<H',mb,20+i*2)[0];assert(word&0x3FFF)==slots.get(tid,0)
@@ -32,7 +32,7 @@ for mid in range(32,36):
    if name not in('!プレス機','!死体詰箱','!死体詰箱2','ベルトコンベア')and not tile:continue
    if tile:frame=w.render_tile(tile,bitmaps)
    else:
-    src=w.load_encrypted_png(w.resolve_named_file(r.parent/'original/img/characters',name),key);frame=w.extract_character_frame(src,name,image['characterIndex'],image['direction'],image['pattern'])
+    src=w.load_encrypted_png(w.resolve_named_file(original_dir(r)/'img/characters',name),key);frame=w.extract_character_frame(src,name,image['characterIndex'],image['direction'],image['pattern'])
    assert rec[7]&4 and(sw,sh)==frame.size
    # The rotating conveyor strip's selected source direction is in its matching row.
    if rec[7]&64:sy+=(image['direction']//2-1)*sh
@@ -62,6 +62,7 @@ static int is_chase_enemy(int m,int id){return (m==32&&id==23);}
 static int is_spider_enemy(int m,int id){return (m==67&&id>=1&&id<=4)||(m==68&&id==2);}
 
 static float render_floor_pixel(float x){return (int)x;}
+static float clamp_float(float v,float lo,float hi){return v<lo?lo:(v>hi?hi:v);}
 static void bind_texture_8888(void*p,int w,int h){bound=p;}
 static void sceGuTexFilter(int a,int b){filter=a;}
 static void sceGuTexFunc(int a,int b){}
@@ -75,6 +76,6 @@ EventSpriteRecord box={7,5,10,20,144,96,5,1};draw_event_sprite_record(&box,33,0,
 EventSpriteRecord tile={2,17,4097,1,48,48,5,19};draw_event_sprite_record(&tile,32,0,0,0,0);assert(bound==(void*)2&&srcx==1&&dstw==24&&dsth==24);return 0;}'''
 with tempfile.TemporaryDirectory()as tmp:
  p=Path(tmp)/'t.c';e=Path(tmp)/'t';p.write_text(pre+s[s.index("static unsigned int g_ambush_reveal_start;"):s.index("static void draw_event_sprite_record(")]+s[a:b]+post);subprocess.run(['cc','-std=c99',str(p),'-o',str(e)],check=True);subprocess.run([str(e)],check=True)
-assert 'm->id>=32 && m->id<=73' in s and 'free(m->event_atlas_detail)'in s
+assert '(m->id>=32 && m->id<=104) || (m->id>=111 && m->id<=139)' in s and 'free(m->event_atlas_detail)'in s
 (r/'audit_factory_graphics_129.json').write_text(json.dumps(counts,indent=2))
 print('PASS:',counts,'native/prefiltered source pixels, all collider pages and tile passage masks; actual detail texture selection and unchanged display size')
