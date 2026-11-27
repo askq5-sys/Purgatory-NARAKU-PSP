@@ -55,6 +55,8 @@ with tempfile.TemporaryDirectory() as td:
     write(d / 'bgm_exact_1000.pcm', music)
     quiet = np.clip((music.astype(np.int64) * 2731 + 2048) >> 12, -32768, 32767)
     write(d / 'bgm_exact_1001.pcm', quiet)                       # 2/3 volume copy -> alias
+    quieter = np.clip((quiet.astype(np.int64) * 2048 + 2048) >> 12, -32768, 32767)
+    write(d / 'bgm_title.pcm', quieter)                           # copy of the copy: matches 1001 only
     mono = (9000 * np.sin(np.arange(20000) * 0.05)).astype(np.int16)
     write(d / 'se_exact_1000.pcm', np.stack([mono, mono], axis=1))  # mono in stereo
     rng = np.random.default_rng(7)
@@ -64,6 +66,18 @@ with tempfile.TemporaryDirectory() as td:
     lines = []
     P.convert(d, report=lines.append)
     assert P.convert(d, report=lines.append) == 0, 'converting again does nothing'
+    # The EBOOT follows one alias: every alias points at a file with samples.
+    for nau in d.glob('*.nau'):
+        data = nau.read_bytes()
+        if data[14] & 1:
+            assert P.is_sample_file(d / data[16:].split(b'\0')[0].decode()), nau.name
+    # An alias of an alias left by the first version is redone.
+    (d / 'bgm_title.nau').write_bytes(P.alias_bytes('bgm_exact_1001.nau', 2048))
+    redo = []
+    P.convert(d, check=True, report=redo.append)
+    assert redo[-1] == '1 files to convert', redo
+    P.convert(d, report=lines.append)
+    assert P.up_to_date(d / 'bgm_title.pcm')
     (d / 'se_plain.nau').unlink()
 
     head = lambda name: (d / name).read_bytes()[:16]
@@ -84,6 +98,8 @@ with tempfile.TemporaryDirectory() as td:
         return P.load(out)
 
     assert np.array_equal(play('bgm_exact_1000'), music), 'lossless'
+    got_title = play('bgm_title')
+    assert got_title.shape == quieter.shape and np.abs(got_title - quieter).max() <= 1
     got_quiet = play('bgm_exact_1001')
     assert got_quiet.shape == quiet.shape and np.abs(got_quiet - quiet).max() <= 1
     assert np.array_equal(play('se_exact_1000'), np.stack([mono, mono], axis=1))

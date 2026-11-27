@@ -4,6 +4,7 @@
  * "work" is the time from the previous vertical blank to the moment the GE
  * finished the next world frame: game logic, scripts and drawing together.
  * Above 16.7 ms the frame misses a vblank and the game drops below 60 FPS.
+ * The map number helps to report where something happened.
  * "heap" is the memory malloc hands out now and the most it has taken from
  * the system so far (fragmentation included). The SDK reserves its heap from
  * all free memory at startup, so the kernel's free-memory count says nothing
@@ -23,7 +24,7 @@ static void perf_after_vblank(void)
     if (!g_perf_window_start) g_perf_window_start = g_perf_after_vblank;
 }
 
-static void perf_frame_done(void)
+static void perf_frame_done(int map_id)
 {
     unsigned long long now = sceKernelGetSystemTimeWide();
     unsigned int work, elapsed;
@@ -40,7 +41,7 @@ static void perf_frame_done(void)
         unsigned int heap = (unsigned int)mi.uordblks;
         if ((unsigned int)mi.arena > g_perf_heap_peak) g_perf_heap_peak = (unsigned int)mi.arena;
         g_perf_text_len = snprintf(g_perf_text, sizeof(g_perf_text),
-            "FPS %u.%u  work %u.%u/%u.%u ms  heap %u/%u KB",
+            "Map%03d FPS %u.%u work %u.%u/%u.%u ms heap %u/%u KB", map_id,
             fps10 / 10, fps10 % 10, avg / 1000, avg % 1000 / 100,
             g_perf_work_max / 1000, g_perf_work_max % 1000 / 100,
             heap / 1024, g_perf_heap_peak / 1024);
@@ -59,6 +60,6 @@ static void perf_hud_draw(void)
 }
 #else
 static inline void perf_after_vblank(void) {}
-static inline void perf_frame_done(void) {}
+static inline void perf_frame_done(int map_id) { (void)map_id; }
 static inline void perf_hud_draw(void) {}
 #endif

@@ -148,39 +148,65 @@ def find_alias(quiet: np.ndarray, loud: np.ndarray):
     return q
 
 
+def up_to_date(pcm: Path) -> bool:
+    """NAME.nau is newer than NAME.pcm and, if an alias, points at samples
+    (aliases of aliases written by the first version are redone)."""
+    nau = pcm.with_suffix(SUFFIX)
+    if not nau.is_file() or nau.stat().st_mtime < pcm.stat().st_mtime:
+        return False
+    data = nau.read_bytes()[:16 + 48]
+    if len(data) < 16 or data[:4] != b'NAUD':
+        return False
+    if data[14] & 1:
+        target = data[16:].split(b'\0')[0].decode(errors='replace')
+        return is_sample_file(nau.parent / target)
+    return True
+
+
 def plan(assets: Path, force: bool):
-    """[(pcm, kind, extra)] where kind is 'mono', 'stereo' or 'alias'."""
+    """[(pcm, kind, extra)] where kind is 'mono', 'stereo' or 'alias'.
+
+    Within each group of equally long sounds, the loudest come first and a
+    sound may only become an alias of one that holds samples itself (the
+    EBOOT follows one alias, never a chain)."""
     pcms = sorted(p for p in assets.glob('*.pcm') if p.is_file())
-    todo = [p for p in pcms if force or not (p.with_suffix(SUFFIX).is_file() and
-            p.with_suffix(SUFFIX).stat().st_mtime >= p.stat().st_mtime)]
+    todo = {p for p in pcms if force or not up_to_date(p)}
     by_size: dict[int, list[Path]] = {}
     for p in pcms:
         by_size.setdefault(p.stat().st_size, []).append(p)
-    result = []
-    for p in todo:
-        samples = load(p)
-        target = None
-        peers = [x for x in by_size.get(p.stat().st_size, []) if x != p]
-        if peers:
-            mine = np.abs(samples.astype(np.int32)).max(initial=0)
-            # Loudest first: the loudest copy is never an alias itself, so
-            # aliases always point at a file that holds samples.
-            loaded = sorted(((np.abs(load(x).astype(np.int32)).max(initial=0), x) for x in peers),
-                            key=lambda t: -t[0])
-            for peak, other in loaded:
-                if peak <= mine:
+    decided: dict[Path, tuple] = {}
+    for group in by_size.values():
+        if not any(p in todo for p in group):
+            continue
+        samples = {p: load(p) for p in group}
+        peak = {p: int(np.abs(s.astype(np.int32)).max(initial=0)) for p, s in samples.items()}
+        roots: list[Path] = []
+        for p in sorted(group, key=lambda x: (-peak[x], x.name)):
+            target = None
+            for root in roots:
+                if peak[root] <= peak[p]:
                     continue
-                gain = find_alias(samples, load(other))
+                gain = find_alias(samples[p], samples[root])
                 if gain is not None:
-                    target = (other, gain)
+                    target = (root, gain)
                     break
-        if target:
-            result.append((p, 'alias', target))
-        elif len(samples) and np.array_equal(samples[:, 0], samples[:, 1]):
-            result.append((p, 'mono', None))
-        else:
-            result.append((p, 'stereo', None))
-    return result
+            if target:
+                decided[p] = ('alias', target)
+                continue
+            roots.append(p)
+            s = samples[p]
+            decided[p] = ('mono' if len(s) and np.array_equal(s[:, 0], s[:, 1]) else 'stereo', None)
+    return [(p, decided[p][0], decided[p][1]) for p in pcms if p in todo]
+
+
+def is_sample_file(path: Path) -> bool:
+    """True for a .nau that holds samples (not an alias)."""
+    try:
+        with path.open('rb') as f:
+            head = f.read(16)
+    except OSError:
+        return False
+    return len(head) == 16 and head[:4] == b'NAUD' and not head[14] & 1
 
 
 def convert(assets: Path, force: bool = False, check: bool = False, report=print) -> int:
@@ -199,7 +225,7 @@ def convert(assets: Path, force: bool = False, check: bool = False, report=print
         for p, kind, extra in jobs:
             out = p.with_suffix(SUFFIX)
             tmp = out.with_suffix(SUFFIX + '.tmp')
-            if kind == 'alias' and extra[0].with_suffix(SUFFIX).is_file():
+            if kind == 'alias' and is_sample_file(extra[0].with_suffix(SUFFIX)):
                 other, gain = extra
                 tmp.write_bytes(alias_bytes(other.with_suffix(SUFFIX).name, gain))
             else:

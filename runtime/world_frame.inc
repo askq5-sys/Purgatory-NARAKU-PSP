@@ -498,7 +498,7 @@ static void render_world(
     perf_hud_draw();
     sceGuFinish();
     sceGuSync(0, 0);
-    perf_frame_done();
+    perf_frame_done(m->id);
     sceDisplayWaitVblankStart();
     perf_after_vblank();
     g_last_world_buffer = g_draw_buffer;
