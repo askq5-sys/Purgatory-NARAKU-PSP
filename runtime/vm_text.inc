@@ -256,7 +256,11 @@ static void vm_wait_text_page(
         (vm_text_has_visible_content(speaker, speaker_len) ||
          vm_text_has_visible_content(message, message_len)) ? 1 : 0;
     if (g_runtime_message_active)
-        rebuild_runtime_message_surface();
+        {
+            PERF_TIME_BEGIN(text);
+            rebuild_runtime_message_surface();
+            PERF_TIME_END(text, g_perf_text_us_max);
+        }
     else
         g_runtime_message_surface_ready = 0;
 

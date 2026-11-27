@@ -20,6 +20,9 @@ s=main_source(r);a=s.index('#define MAX_ACTIVE_PICTURES');b=s.index('static vola
 a=s.index('static PictureSlot *picture_slot(');b=s.index('static void draw_fog_a1_overlay(',a);loader=s[a:b]
 a=s.index('static void draw_vm_pictures(');b=s.index('\n}\n',a)+3;drawing=s[a:b]
 pre='''#include <stdint.h>
+#define PERF_COUNT(c) ((void)0)
+#define PERF_TIME_BEGIN(n) do { } while (0)
+#define PERF_TIME_END(n, m) do { } while (0)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

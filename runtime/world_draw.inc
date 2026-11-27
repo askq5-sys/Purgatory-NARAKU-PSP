@@ -773,11 +773,19 @@ static void picture_show(int number, int resource_id, int origin,
     russian_controls = cache_key < 0;
     /* A prefetch of this very picture is worth waiting for; any other
      * finished one goes to the cache first. */
-    picture_prefetch_collect(g_prefetch_state == PREFETCH_LOADING && g_prefetch_key == cache_key);
-    memset(portrait_header, 0, sizeof(portrait_header));
-    data = picture_cache_take(cache_key, header, portrait_header);
+    {
+        PERF_TIME_BEGIN(pic);
+        int waited = g_prefetch_state == PREFETCH_LOADING && g_prefetch_key == cache_key;
+        picture_prefetch_collect(waited);
+        memset(portrait_header, 0, sizeof(portrait_header));
+        data = picture_cache_take(cache_key, header, portrait_header);
+        if (data) { if (waited) PERF_COUNT(g_perf_pic_wait); else PERF_COUNT(g_perf_pic_hit); }
+        else PERF_COUNT(g_perf_pic_miss);
+        PERF_TIME_END(pic, g_perf_pic_us_max);
+    }
     portrait = data && memcmp(header,"NPR1",4)==0;
     if (!data) {
+        PERF_TIME_BEGIN(read);
         snprintf(path, sizeof(path), ASSET_ROOT "pic_%03d.p44", resource_id);
         if (russian_controls)
             snprintf(path,sizeof(path),ASSET_ROOT "controls_ru177.p44");
@@ -803,6 +811,7 @@ static void picture_show(int number, int resource_id, int origin,
         }
         fclose(fp);
         sceKernelDcacheWritebackInvalidateAll();
+        PERF_TIME_END(read, g_perf_pic_us_max);
     }
     slot->cache_key = cache_key;
     memcpy(slot->cache_header, header, sizeof(slot->cache_header));

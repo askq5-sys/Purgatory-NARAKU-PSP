@@ -5,6 +5,9 @@ from pathlib import Path
 import subprocess,tempfile
 r=Path(__file__).resolve().parents[1];s=main_source(r);a=s.index('static char *style_green_key_dialogue(');b=s.index('/* Reflow the PC-authored',a)
 pre=r'''#include <stdint.h>
+#define PERF_COUNT(c) ((void)0)
+#define PERF_TIME_BEGIN(n) do { } while (0)
+#define PERF_TIME_END(n, m) do { } while (0)
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

@@ -5,7 +5,10 @@
  * finished the next world frame: game logic, scripts and drawing together.
  * Above 16.7 ms the frame misses a vblank and the game drops below 60 FPS.
  * The second line shows the slowest music read in the last second and how
- * many reads since startup took longer than a buffer plays (audible gaps).
+ * many reads since startup took longer than a buffer plays (audible gaps),
+ * pictures shown since startup as cache hit / waited for prefetch / read on
+ * the spot, the slowest Show Picture and the slowest message text build in
+ * the last second (runtime/perf_probe.h).
  * The map number helps to report where something happened; menus (title,
  * inventory, save/load) count as their own frames and show "Menu".
  * "heap" is the memory malloc hands out now and the most it has taken from
@@ -17,7 +20,7 @@
 #include <malloc.h>
 static unsigned long long g_perf_after_vblank, g_perf_window_start;
 static unsigned int g_perf_frames, g_perf_work_sum, g_perf_work_max;
-static char g_perf_text[96], g_perf_text2[64];
+static char g_perf_text[96], g_perf_text2[96];
 static int g_perf_text_len, g_perf_text2_len;
 static unsigned int g_perf_heap_peak;
 
@@ -52,9 +55,11 @@ static void perf_frame_done(int map_id)
             g_perf_work_max / 1000, g_perf_work_max % 1000 / 100,
             heap / 1024, g_perf_heap_peak / 1024);
         g_perf_text2_len = snprintf(g_perf_text2, sizeof(g_perf_text2),
-            "music read max %u.%u ms  gaps %u",
-            g_perf_bgm_read_max / 1000, g_perf_bgm_read_max % 1000 / 100, g_perf_bgm_late);
-        g_perf_bgm_read_max = 0;
+            "music %u.%ums gaps %u pic %u/%u/%u %ums text %ums",
+            g_perf_bgm_read_max / 1000, g_perf_bgm_read_max % 1000 / 100, g_perf_bgm_late,
+            g_perf_pic_hit, g_perf_pic_wait, g_perf_pic_miss,
+            g_perf_pic_us_max / 1000, g_perf_text_us_max / 1000);
+        g_perf_bgm_read_max = g_perf_pic_us_max = g_perf_text_us_max = 0;
         if (g_perf_text2_len < 0) g_perf_text2_len = 0;
         if (g_perf_text2_len >= (int)sizeof(g_perf_text2)) g_perf_text2_len = (int)sizeof(g_perf_text2) - 1;
         if (g_perf_text_len < 0) g_perf_text_len = 0;
