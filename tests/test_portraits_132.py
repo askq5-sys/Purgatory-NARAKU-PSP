@@ -29,6 +29,11 @@ pre='''#include <stdint.h>
 #define SCREEN_H 272
 #define GU_PSM_4444 1
 static size_t read_chunked(void*d,size_t n,FILE*f){return fread(d,1,n,f);}
+typedef unsigned int SceSize;static int(*thread_fn)(SceSize,void*);static int threads_started;
+static int sceKernelCreateThread(const char*n,int(*f)(SceSize,void*),int pr,int st,int at,void*o){thread_fn=f;return 1;}
+static int sceKernelStartThread(int t,SceSize a,void*p){++threads_started;return thread_fn(a,p),0;}
+static int sceKernelExitDeleteThread(int s){return 0;}
+static int sceKernelDelayThread(int us){return 0;}
 #define GU_FALSE 0
 #define GU_TFX_MODULATE 2
 #define GU_TFX_REPLACE 3
@@ -65,6 +70,13 @@ picture_show(8,93,0,0,0,100,100,255);p=picture_slot(8);assert(p->texture&&!p->po
 picture_show(9,18,0,0,0,100,100,255);p=picture_slot(9);assert(p->texture==t&&p->portrait&&p->w==408&&p->h==312&&p->picture_offset_x==ox&&p->picture_offset_y==oy&&p->picture_region_w==rw&&p->picture_region_h==rh);
 picture_show(10,18,0,0,0,100,100,255);assert(picture_slot(10)->texture&&picture_slot(10)->texture!=t);
 erase_picture_slot(9);erase_picture_slot(10);picture_cache_clear();for(int i=0;i<PICTURE_CACHE_SLOTS;++i)assert(!g_picture_cache[i].texture);}
+/* Prefetch: the loader reads picture 18 ahead; showing it then uses that buffer
+ * without another read. Pictures already cached or missing do not start a load. */
+{int before=threads_started;picture_prefetch(18);assert(threads_started==before+1&&g_prefetch_state==PREFETCH_READY);
+void*t=g_prefetch_texture;picture_show(12,18,0,0,0,100,100,255);assert(g_prefetch_state==PREFETCH_IDLE&&picture_slot(12)->texture==t&&picture_slot(12)->portrait);
+picture_prefetch(18);assert(threads_started==before+1);
+picture_prefetch(999);assert(g_prefetch_state==PREFETCH_FAILED||g_prefetch_state==PREFETCH_IDLE);picture_prefetch_collect(1);assert(g_prefetch_state==PREFETCH_IDLE&&!g_prefetch_texture);
+erase_picture_slot(12);picture_cache_clear();}
 return 0;}'''
 with tempfile.TemporaryDirectory()as td:
  p=Path(td)/'t.c';e=Path(td)/'t';p.write_text(pre+types+loader+drawing+post);subprocess.run(['cc','-std=c99',str(p),'-lm','-o',str(e)],check=True);subprocess.run([str(e)],check=True)

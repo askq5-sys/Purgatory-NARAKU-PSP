@@ -568,16 +568,72 @@ typedef struct {
 static PictureCacheEntry g_picture_cache[PICTURE_CACHE_SLOTS];
 static unsigned g_picture_cache_clock;
 
+/* Prefetch: while a message waits for the player, a low-priority thread
+ * reads the next picture the script will show (vm_scan_next_picture), so
+ * the next Show Picture finds it in the cache. Only the main thread
+ * allocates, frees and touches the cache; the loader only reads into the
+ * buffer it was given and then publishes the state. */
+enum { PREFETCH_IDLE, PREFETCH_LOADING, PREFETCH_READY, PREFETCH_FAILED };
+static volatile int g_prefetch_state = PREFETCH_IDLE;
+static int g_prefetch_key;
+static void *g_prefetch_texture;
+static unsigned char g_prefetch_header[8], g_prefetch_portrait[12];
+static char g_prefetch_path[180];
+
+static int picture_header_ok(const unsigned char *header)
+{
+    return (memcmp(header,"NP50",4) == 0 || memcmp(header,"NGO1",4) == 0 || memcmp(header,"NPR1",4) == 0) &&
+           read_u16_le(header+4) >= 1 && read_u16_le(header+6) >= 1 &&
+           read_u16_le(header+4) <= 512 && read_u16_le(header+6) <= 512;
+}
+
+static int picture_prefetch_thread(SceSize args, void *argp)
+{
+    FILE *fp = fopen(g_prefetch_path, "rb");
+    int ok = 0;
+    (void)args; (void)argp;
+    memset(g_prefetch_portrait, 0, sizeof(g_prefetch_portrait));
+    if (fp) {
+        ok = fread(g_prefetch_header,1,8,fp) == 8 && picture_header_ok(g_prefetch_header) &&
+             (memcmp(g_prefetch_header,"NPR1",4) != 0 || fread(g_prefetch_portrait,1,12,fp) == 12) &&
+             read_chunked(g_prefetch_texture,512*512*2,fp) == 512*512*2;
+        fclose(fp);
+    }
+    g_prefetch_state = ok ? PREFETCH_READY : PREFETCH_FAILED;
+    sceKernelExitDeleteThread(0);
+    return 0;
+}
+
+static void picture_cache_store(int key, void *texture, const unsigned char *header, const unsigned char *portrait);
+
+/* Main thread: take a finished prefetch into the cache. With wait, first
+ * let a running one finish. */
+static void picture_prefetch_collect(int wait)
+{
+    while (wait && g_prefetch_state == PREFETCH_LOADING) sceKernelDelayThread(1000);
+    if (g_prefetch_state == PREFETCH_READY) {
+        sceKernelDcacheWritebackInvalidateAll();
+        picture_cache_store(g_prefetch_key, g_prefetch_texture, g_prefetch_header, g_prefetch_portrait);
+        g_prefetch_texture = NULL;
+        g_prefetch_state = PREFETCH_IDLE;
+    } else if (g_prefetch_state == PREFETCH_FAILED) {
+        free(g_prefetch_texture);
+        g_prefetch_texture = NULL;
+        g_prefetch_state = PREFETCH_IDLE;
+    }
+}
+
 static void picture_cache_clear(void)
 {
     int i;
+    picture_prefetch_collect(1);
     for (i = 0; i < PICTURE_CACHE_SLOTS; ++i) {
         free(g_picture_cache[i].texture);
         memset(&g_picture_cache[i], 0, sizeof(g_picture_cache[i]));
     }
 }
 
-static void picture_cache_put(const PictureSlot *slot)
+static void picture_cache_store(int key, void *texture, const unsigned char *header, const unsigned char *portrait)
 {
     PictureCacheEntry *victim = &g_picture_cache[0];
     int i;
@@ -587,11 +643,54 @@ static void picture_cache_put(const PictureSlot *slot)
         if (e->age < victim->age) victim = e;
     }
     free(victim->texture);
-    victim->key = slot->cache_key;
-    victim->texture = slot->texture;
-    memcpy(victim->header, slot->cache_header, sizeof(victim->header));
-    memcpy(victim->portrait, slot->cache_portrait, sizeof(victim->portrait));
+    victim->key = key;
+    victim->texture = texture;
+    memcpy(victim->header, header, sizeof(victim->header));
+    memcpy(victim->portrait, portrait, sizeof(victim->portrait));
     victim->age = ++g_picture_cache_clock;
+}
+
+static void picture_cache_put(const PictureSlot *slot)
+{
+    picture_cache_store(slot->cache_key, slot->texture, slot->cache_header, slot->cache_portrait);
+}
+
+static int picture_cache_has(int key)
+{
+    int i;
+    for (i = 0; i < PICTURE_CACHE_SLOTS; ++i)
+        if (g_picture_cache[i].texture && g_picture_cache[i].key == key) return 1;
+    for (i = 0; i < MAX_ACTIVE_PICTURES; ++i)
+        if (g_pictures[i].number && g_pictures[i].cache_key == key) return 1;
+    return 0;
+}
+
+static int picture_cache_key(int resource_id)
+{
+    return (g_language==4 && resource_id>=9 && resource_id<=12) ? -resource_id : resource_id;
+}
+
+/* Starts reading picture resource_id in the background unless it is shown,
+ * cached or already being read. */
+static void picture_prefetch(int resource_id)
+{
+    int key, thid;
+    picture_prefetch_collect(0);
+    if (resource_id < 1 || g_prefetch_state != PREFETCH_IDLE) return;
+    key = picture_cache_key(resource_id);
+    if (picture_cache_has(key)) return;
+    if (key < 0) snprintf(g_prefetch_path, sizeof(g_prefetch_path), ASSET_ROOT "controls_ru177.p44");
+    else snprintf(g_prefetch_path, sizeof(g_prefetch_path), ASSET_ROOT "pic_%03d.p44", resource_id);
+    g_prefetch_texture = memalign(16, 512 * 512 * 2);
+    if (!g_prefetch_texture) return;
+    g_prefetch_key = key;
+    g_prefetch_state = PREFETCH_LOADING;
+    thid = sceKernelCreateThread("NARAKU PIC", picture_prefetch_thread, 0x30, 0x2000, 0, NULL);
+    if (thid < 0 || sceKernelStartThread(thid, 0, NULL) < 0) {
+        free(g_prefetch_texture);
+        g_prefetch_texture = NULL;
+        g_prefetch_state = PREFETCH_IDLE;
+    }
 }
 
 static void *picture_cache_take(int key, unsigned char *header, unsigned char *portrait)
@@ -643,8 +742,11 @@ static void picture_show(int number, int resource_id, int origin,
     if (number == 6) { g_picture6_visible = 0; g_picture6_alpha = 0; }
     slot = picture_slot(number);
     if (!slot) return; /* PSP-1000 memory cap: max five pictures */
-    russian_controls = g_language==4 && resource_id>=9 && resource_id<=12;
-    cache_key = russian_controls ? -resource_id : resource_id;
+    cache_key = picture_cache_key(resource_id);
+    russian_controls = cache_key < 0;
+    /* A prefetch of this very picture is worth waiting for; any other
+     * finished one goes to the cache first. */
+    picture_prefetch_collect(g_prefetch_state == PREFETCH_LOADING && g_prefetch_key == cache_key);
     memset(portrait_header, 0, sizeof(portrait_header));
     data = picture_cache_take(cache_key, header, portrait_header);
     portrait = data && memcmp(header,"NPR1",4)==0;

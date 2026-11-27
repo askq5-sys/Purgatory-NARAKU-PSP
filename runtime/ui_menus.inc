@@ -385,6 +385,10 @@ static int ui_save_load_scene(
     sceCtrlPeekBufferPositive(&pad, 1);
     prev = pad.Buttons;
 
+    /* Slot headers are read once per visit, not every frame: five file
+     * opens per frame made this screen crawl on a memory stick. */
+    struct { signed char state; int map_id, x, y, actor; uint32_t playtime; } meta[SAVE_SLOT_COUNT];
+    memset(meta, 0, sizeof(meta));
     clear_save_previews();
     while (1) {
         int i;
@@ -408,10 +412,21 @@ static int ui_save_load_scene(
         for (i = 0; i < visible; ++i) {
             int slot = scroll + i + 1;
             float y = 65.0f + i * 39.0f;
-            int map_id = 0, sx = 0, sy = 0, actor = 1;
+            int actor = 1;
             uint32_t playtime = 0;
-            int exists = save_slot_metadata(slot, &map_id, &sx, &sy, &playtime, &actor);
+            int exists;
             char slot_text[32];
+            if (!meta[slot - 1].state) {
+                meta[slot - 1].actor = 1;
+                meta[slot - 1].state = save_slot_metadata(slot, &meta[slot - 1].map_id,
+                    &meta[slot - 1].x, &meta[slot - 1].y, &meta[slot - 1].playtime,
+                    &meta[slot - 1].actor) ? 1 : -1;
+            }
+            exists = meta[slot - 1].state > 0;
+            if (exists) {
+                playtime = meta[slot - 1].playtime;
+                actor = meta[slot - 1].actor;
+            }
 
             if (slot - 1 == cursor)
                 draw_solid_rect(10.0f, y, 460.0f, 36.0f, 72, 8, 20, 220);

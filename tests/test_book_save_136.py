@@ -47,7 +47,7 @@ static void *g_ui_char_atlas;
 static void ui_frame_begin(void){assert(++frames<5);}
 static void ui_frame_end(void){}
 static int ui_label_text(int k,int l,const char **p,size_t *n){return 0;}
-static int save_slot_metadata(int slot,int *m,int *x,int *y,uint32_t*t,int*actor){return 0;}
+static int meta_reads[32];static int save_slot_metadata(int slot,int *m,int *x,int *y,uint32_t*t,int*actor){++meta_reads[slot];return 0;}
 static int save_slot_exists(int slot){return 0;}
 static void clear_save_previews(void){}
 static void *save_preview_texture(int actor){(void)actor;return NULL;}
@@ -57,8 +57,10 @@ static uint32_t ui_cancel_mask(void){return 2;}
 static void sceCtrlPeekBufferPositive(SceCtrlData*p,int n){p->Buttons=reads==0?1:reads==1?0:cancel?2:1;++reads;}
 static int save_to_slot(int slot,int map,int x,int y,int dir){assert(frames==2&&slot==1&&map==57&&x==9&&y==5&&dir==2);++saved;return 1;}
 '''
-post='''int main(void){assert(!g_save_enabled);assert(ui_save_load_scene(1,57,9,5,2,NULL)==1&&saved==1&&frames==2);frames=reads=0;cancel=1;assert(ui_save_load_scene(1,57,9,5,2,NULL)==0&&saved==1&&frames==2);return 0;}'''
+post='''int main(void){assert(!g_save_enabled);assert(ui_save_load_scene(1,57,9,5,2,NULL)==1&&saved==1&&frames==2);frames=reads=0;cancel=1;assert(ui_save_load_scene(1,57,9,5,2,NULL)==0&&saved==1&&frames==2);
+/* Two frames on screen, but each visible slot's header was read once per visit. */
+for(int i=1;i<=5;++i)assert(meta_reads[i]==2);assert(meta_reads[6]==0);return 0;}'''
 with tempfile.TemporaryDirectory()as tmp:
  p=Path(tmp)/'save.c';exe=Path(tmp)/'save';p.write_text(pre+s[a:b]+post)
  subprocess.run(['cc','-std=c99',str(p),'-o',str(exe)],check=True);subprocess.run([str(exe)],check=True)
-print('PASS: direct book Save opens with menu saving disabled, release arms confirmation, current coordinates saved, cancellation does not save')
+print('PASS: direct book Save opens with menu saving disabled, release arms confirmation, current coordinates saved, cancellation does not save; slot headers are read once per visit')

@@ -21,6 +21,7 @@ PSP_MODULE_INFO("NARAKU PSP", PSP_MODULE_USER, 1, 78);
 #include "runtime/player_animation.h"
 #include "runtime/render_boundaries.h"
 #include "runtime/tone_gray.h"
+#include "runtime/vm_scan.h"
 #ifdef NARAKU_SWIZZLE_TEXTURES
 #include "runtime/texture_swizzle.h"
 #endif

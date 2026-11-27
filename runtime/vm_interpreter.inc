@@ -415,6 +415,8 @@ static int vm_execute_page(
                 q += sl[i] + ml[i];
             }
             p = q;
+            /* Read the next picture while the player reads this message. */
+            picture_prefetch(vm_scan_next_picture(base, pg->cmd_size, (size_t)(p - base), 64));
             vm_wait_text(
                 m, char_atlas, *tile_x, *tile_y, *direction_row,
                 speaker ? speaker : "", speaker_len,
